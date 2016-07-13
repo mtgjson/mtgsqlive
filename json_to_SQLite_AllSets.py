@@ -5,7 +5,7 @@ import datetime
 import os
 
 JSON_FILE = input("Where is the \"AllSets-x.json\" file you'd like to import?\n> ") #Input filename via command line
-DB_FILE = "Magic Database Complete" + str(datetime.datetime.now()) + ".db"
+DB_FILE = "Magic Database Complete " + str(datetime.datetime.now()) + ".db"
 
 # Get the value of the card, return None if NULL
 def getVal(data, field):

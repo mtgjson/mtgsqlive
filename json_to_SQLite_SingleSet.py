@@ -5,7 +5,7 @@ import datetime
 import os
 
 JSON_FILE = input("Where is the single set JSON file you'd like to import?\n> ") #Input filename via command line
-DB_FILE = "Magic Database Single Set" + str(datetime.datetime.now()) + ".db"
+DB_FILE = "Magic Database Single Set " + str(datetime.datetime.now()) + ".db"
 
 traffic = json.load(open(JSON_FILE))
 conn = sqlite3.connect(DB_FILE)
