@@ -1,22 +1,28 @@
 #!/usr/bin/env python3
 import json
 import sqlite3
-import datetime
+import time
 import os
 
 JSON_FILE = os.path.expanduser(input("Where is the \"AllSets-x.json\" file you'd like to import?\n> "))
-DB_FILE = os.path.join(os.path.dirname(JSON_FILE), "Magic Database Complete " + str(datetime.datetime.now()) + ".db")
+DB_FILE = os.path.join(os.path.dirname(JSON_FILE), "Magic Database Complete.db")
 
 # Get the value of the card, return None if NULL
 def getVal(data, field):
-    return str(data.get(field))
+    val = data.get(field)
+    if val:
+        return str(val)
+    return val
 
 traffic = json.load(open(JSON_FILE))
 conn = sqlite3.connect(DB_FILE)
 
 c = conn.cursor()
-c.execute('create table table_name (id, layout, name, names, manaCost, cmc, colors, colorIdentity, type, supertypes, types, subtypes, rarity, text, flavor, artist, number, power, toughness, loyalty, multiverseid, variations, imageName, watermark, border, timeshifted, hand, life, reserved, releaseDate, starter, rulings, foreignGNames, printings, originalText, originalType, legalities, source, setName, setCode, setReleaseDate)')
 
+c.execute('create table cards (id, layout, name, names, manaCost, cmc, colors, colorIdentity, type, supertypes, types, subtypes, rarity, text, flavor, artist, number, power, toughness, loyalty, multiverseid, variations, imageName, watermark, border, timeshifted, hand, life, reserved, releaseDate, starter, rulings, foreignNames, printings, originalText, originalType, legalities, source, setName, setCode, setReleaseDate)')
+
+c.execute('create table lastUpdated (datetime)')
+c.execute('insert into lastUpdated values (?)', [str(time.strftime("%Y-%m-%d %H:%M:%S"))])
 
 # Get the setnames in the AllSets file and put them into a dictionary for later use
 setNames = []
@@ -63,7 +69,7 @@ for thisSet in setNames:
         life = getVal(thisCard, "life")
         reserved = getVal(thisCard, "reserved")
         releaseDate = getVal(thisCard, "releaseDate")
-        start = getVal(thisCard, "starter")
+        starter = getVal(thisCard, "starter")
         rulings = getVal(thisCard, "rulings")
         foreignNames = getVal(thisCard, "foreignNames")
         printings = getVal(thisCard, "printings")
@@ -72,9 +78,9 @@ for thisSet in setNames:
         legalities = getVal(thisCard, "legalities")
         source = getVal(thisCard, "source")
         
-        thisCard_data = [thisCard_id, layout, name, names, manaCost, cmc, colors, colorIdentity, thisCard_type, supertypes, types, subtypes, rarity, text, flavor, artist, number, power, toughness, loyalty, multiverseid, variations, imageName, watermark, border, timeshifted, hand, life, reserved, releaseDate, start, rulings, foreignNames, printings, originalText, originalType, legalities, source, setName, thisSet, setReleaseDate]
+        thisCard_data = [thisCard_id, layout, name, names, manaCost, cmc, colors, colorIdentity, thisCard_type, supertypes, types, subtypes, rarity, text, flavor, artist, number, power, toughness, loyalty, multiverseid, variations, imageName, watermark, border, timeshifted, hand, life, reserved, releaseDate, starter, rulings, foreignNames, printings, originalText, originalType, legalities, source, setName, thisSet, setReleaseDate]
 
-        c.execute('insert into table_name values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', thisCard_data)
+        c.execute('insert into cards values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', thisCard_data)
 
 print("Database file can be found at " + os.path.abspath(DB_FILE))
 conn.commit()
