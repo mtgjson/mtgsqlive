@@ -12,34 +12,33 @@ def remove_empty_keys(d):
             del d[k]
     return d
 
-def db_to_json(database, fileName="", writeToFile=True):
-    if (writeToFile):
-        printFile = open(fileName, 'w')
-    
-    conn = sqlite3.connect(database)
-    conn.row_factory = sqlite3.Row # Enable keys for the rows
-    cursor = conn.cursor()
- 
+def db_to_json(database_connection):
+    database_connection.row_factory = sqlite3.Row # Enable keys for the rows
+    cursor = database_connection.cursor()
+
     cursor.execute(""" SELECT * from cards """)
 
+    returnData = ""
     rows = cursor.fetchall()
-
     for row in rows:
         row = remove_empty_keys(dict_from_row(row))
-        
         dump = json.dumps(row, sort_keys=True)
-        if (writeToFile):
-            printFile.write(dump)
-        else:
-            print(dump)
+        returnData += dump
     
-    conn.close()
-    printFile.close()
+    database_connection.close()
+    return returnData
     
 def main():
     d = os.path.join(os.path.expanduser(input("Location of database: ")), "Magic DB.db")
+    d = sqlite3.connect(d)
+    
     xml = os.path.join(os.path.expanduser(input("Location of save file: ")), "Output.json")
-    db_to_json(d, xml)
+        
+    json_code = db_to_json(d)
+    
+    writeFile = open(xml, 'w')
+    writeFile.write(json_code)
+    writeFile.close()
 
 if __name__ == '__main__':
     main()
