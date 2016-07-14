@@ -4,20 +4,18 @@ import sqlite3
 import datetime
 import os
 
-JSON_FILE = input("Where is the \"AllSets-x.json\" file you'd like to import?\n> ") #Input filename via command line
-DB_FILE = "Magic Database Complete " + str(datetime.datetime.now()) + ".db"
+JSON_FILE = os.path.expanduser(input("Where is the \"AllSets-x.json\" file you'd like to import?\n> "))
+DB_FILE = os.path.join(os.path.dirname(JSON_FILE), "Magic Database Complete " + str(datetime.datetime.now()) + ".db")
 
 # Get the value of the card, return None if NULL
 def getVal(data, field):
-    try: retVal = str(data[field])
-    except KeyError: retVal = None
-    return retVal
+    return str(data.get(field))
 
 traffic = json.load(open(JSON_FILE))
 conn = sqlite3.connect(DB_FILE)
 
 c = conn.cursor()
-c.execute('create table table_name (name, names, setName, thisSet, setReleaseDate, thisCard_id, manaCost, cmc, colors, colorIdentity, supertypes, types, subtypes, rarity, text, flavor, artist, number, power, toughness, loyalty, multiverseid, variations, reserved, rulings, printings, legalities)')
+c.execute('create table table_name (id, layout, name, names, manaCost, cmc, colors, colorIdentity, type, supertypes, types, subtypes, rarity, text, flavor, artist, number, power, toughness, loyalty, multiverseid, variations, imageName, watermark, border, timeshifted, hand, life, reserved, releaseDate, starter, rulings, foreignGNames, printings, originalText, originalType, legalities, source, setName, setCode, setReleaseDate)')
 
 
 # Get the setnames in the AllSets file and put them into a dictionary for later use
@@ -36,12 +34,14 @@ for thisSet in setNames:
     
     for thisCard in setCards:
         thisCard_id = getVal(thisCard, "id")
+        layout = getVal(thisCard, "layout")
         name = getVal(thisCard, "name")
         names = getVal(thisCard, "names")
         manaCost = getVal(thisCard, "manaCost")
         cmc = getVal(thisCard, "cmc")
         colors = getVal(thisCard, "colors")
         colorIdentity = getVal(thisCard, "colorIdentity")
+        thisCard_type = getVal(thisCard, "type")
         supertypes = getVal(thisCard, "supertypes")
         types = getVal(thisCard, "types")
         subtypes = getVal(thisCard, "subtypes")
@@ -55,14 +55,26 @@ for thisSet in setNames:
         loyalty = getVal(thisCard, "loyalty")
         multiverseid = getVal(thisCard, "multiverseid")
         variations = getVal(thisCard, "variations")
+        imageName = getVal(thisCard, "imageName")
+        watermark = getVal(thisCard, "watermark")
+        border = getVal(thisCard, "border")
+        timeshifted = getVal(thisCard, "timeshifted")
+        hand = getVal(thisCard, "hand")
+        life = getVal(thisCard, "life")
         reserved = getVal(thisCard, "reserved")
+        releaseDate = getVal(thisCard, "releaseDate")
+        start = getVal(thisCard, "starter")
         rulings = getVal(thisCard, "rulings")
+        foreignNames = getVal(thisCard, "foreignNames")
         printings = getVal(thisCard, "printings")
+        originalText = getVal(thisCard, "originalText")
+        originalType = getVal(thisCard, "originalType")
         legalities = getVal(thisCard, "legalities")
+        source = getVal(thisCard, "source")
         
-        thisCard_data = [name, names, setName, thisSet, setReleaseDate, thisCard_id, manaCost, cmc, colors, colorIdentity, supertypes, types, subtypes, rarity, text, flavor, artist, number, power, toughness, loyalty, multiverseid, variations, reserved, rulings, printings, legalities]
+        thisCard_data = [thisCard_id, layout, name, names, manaCost, cmc, colors, colorIdentity, thisCard_type, supertypes, types, subtypes, rarity, text, flavor, artist, number, power, toughness, loyalty, multiverseid, variations, imageName, watermark, border, timeshifted, hand, life, reserved, releaseDate, start, rulings, foreignNames, printings, originalText, originalType, legalities, source, setName, thisSet, setReleaseDate]
 
-        c.execute('insert into table_name values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', thisCard_data)
+        c.execute('insert into table_name values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', thisCard_data)
 
 print("Database file can be found at " + os.path.abspath(DB_FILE))
 conn.commit()
