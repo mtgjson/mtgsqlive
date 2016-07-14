@@ -2,6 +2,8 @@
 
 [![Join the chat at https://gitter.im/ZeldaZach/MTG-Livetime-Database](https://badges.gitter.im/ZeldaZach/MTG-Livetime-Database.svg)](https://gitter.im/ZeldaZach/MTG-Livetime-Database?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
-This project uses the [MTGJSON](www.mtgjson.com) files to create a SQLite database with all relevant data for Magic: The Gathering.
+The goal of this project is to create a SQLite database with all Magic: The Gathering card data that is supported by Gatherer and [MTGJSON](https://mtgjson.com).
 
-This database can be easily updated / pulled from the repo for projects that need to use a database of the cards and don't have a way to parse the JSON files themselves.
+We don't like being dependent on Gatherer for card data, as their update time is always delayed and there are sometimes obvious and egregious mistakes that we can correct in real time.
+
+The database starts as a copy of the MTGJSON source of AllSets-x.json, then we manually go in to correct any errors, as MTGJSON is a direct parse of Gatherer. When spoiler season comes around, we can manually update this (with a tool to be developed later) so we will always have a database that's up to date. Projects can pull in our complete database for their projects in order to have a full Magic: the Gathering card database!
