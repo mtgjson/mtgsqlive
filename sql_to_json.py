@@ -16,8 +16,9 @@ def db_to_json(database_connection):
     database_connection.row_factory = sqlite3.Row # Enable keys for the rows
     cursor = database_connection.cursor()
 
-    cursor.execute(""" SELECT * from cards """)
+    cursor.execute(""" SELECT * from cards ORDER BY setCode""")
 
+# TODO: Figure out how to put them into LEA {cards}, LEB {cards}, ..., SOI {cards}
     returnData = ""
     rows = cursor.fetchall()
     for row in rows:
