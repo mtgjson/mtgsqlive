@@ -1,6 +1,6 @@
-# MTG-Livetime-Database
+# MTGSQLive
 
-[![Join the chat at https://gitter.im/ZeldaZach/MTG-Livetime-Database](https://badges.gitter.im/ZeldaZach/MTG-Livetime-Database.svg)](https://gitter.im/ZeldaZach/MTG-Livetime-Database?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Join the chat at https://gitter.im/mtgjson/mtgsqlive](https://badges.gitter.im/mtgjson/mtgsqlive.svg)](https://gitter.im/mtgjson/mtgsqlive)
 
 The goal of this project is to create a SQLite database with all Magic: The Gathering card data that is supported by Gatherer and [MTGJSON](https://mtgjson.com).
 
