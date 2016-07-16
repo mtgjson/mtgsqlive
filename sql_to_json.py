@@ -3,6 +3,7 @@ import json
 import sqlite3
 import os
 import fileinput
+import sys
 
 def dict_from_row(row):
     return dict(zip(row.keys(), row))
@@ -16,8 +17,7 @@ def remove_empty_keys(d):
 def db_to_json(database_connection):
     database_connection.row_factory = sqlite3.Row # Enable keys for the rows
     cursor = database_connection.cursor()
-
-    cursor.execute("SELECT DISTINCT setCode from cards LIMIT 10")
+    cursor.execute("SELECT DISTINCT setCode from cards LIMIT 15 OFFSET " + sys.argv[1])
 
     mainDict = []
     returnData = []
@@ -37,14 +37,12 @@ def db_to_json(database_connection):
     return mainDict
     
 def main():
-    #d = os.path.join(os.path.expanduser(input("Location of database: ")), "Magic DB.db")
-    d = os.path.join(os.path.expanduser("~/Desktop"), "Magic DB.db")
+    d = os.path.join(os.path.expanduser(sys.argv[2]), "Magic DB.db")
     d = sqlite3.connect(d)
 
-    #xml = os.path.join(os.path.expanduser(input("Location of save file: ")), "Output.json")
-    xml = os.path.join(os.path.expanduser("~/Desktop"), "Output.tmp.json")
-    xml2 = os.path.join(os.path.expanduser("~/Desktop"), "Output.json")
-
+    xml = os.path.join(os.path.expanduser(sys.argv[3]), "Output.tmp.json")
+    xml2 = os.path.join(os.path.expanduser(sys.argv[3]), "Output.json")
+    
     json_code = json.dumps(db_to_json(d), sort_keys=True, indent=2)
     
     writeFile = open(xml, 'w')
@@ -55,17 +53,30 @@ def main():
     with open(xml) as f:
         with open(xml2, 'w') as f2:
             for line in f.readlines():
+                if '"rulings":' in line: continue
+                if '"foreignNames":' in line: continue
+                if '"printings":' in line: continue
+                if '"originalText":' in line: continue
+                if '"originalType":' in line: continue
+                if '"legalities":' in line: continue
+                if '"source":' in line: continue
+                
+                
                 if replace_and_write_these_keys(f2, line, "colorIdentity"): continue
                 if replace_and_write_these_keys(f2, line, "colors"): continue
                 if replace_and_write_these_keys(f2, line, "printings"): continue
+                if replace_and_write_these_keys(f2, line, "supertypes"): continue
                 if replace_and_write_these_keys(f2, line, "subtypes"): continue
                 if replace_and_write_these_keys(f2, line, "legalities"): continue
                 if replace_and_write_these_keys(f2, line, "types"): continue
                 #if replace_and_write_these_keys(f2, line, "rulings"): continue
                 #if replace_and_write_these_keys(f2, line, "foreignNames"): continue
                 
-                if '"' + "variations" + '":' in line:
+                if '"variations":' in line:
                     f2.write(",")
+                if '"watermark":' in line:
+                    f2.write(",")
+
                     
                 f2.write(line)
         f2.close()
@@ -77,13 +88,18 @@ def replace_and_write_these_keys(file_opened, line, key_val):
         file_opened.write(retVal)
         return True
 
+# Yes this is a mess, but it works for now
 def str_to_json(line, key_val):
     if '"' + key_val + '":' in line:
         line_index = line.index('"[')
-        line = line[:line_index] + line[line_index:].replace('\\"', '"')[1:]
+
+        line = line[:line_index] + line[line_index:].replace('\\"', '"').replace('”', '\\"').replace('“', '\\"').replace('’', "\\'")[1:]
 
         while line.strip()[-1:] != "]":
             line = line[:-1]
+         
+        try: line = line[:line_index] + json.dumps(json.loads(line[line_index:]), indent=2)
+        except: line = line
             
         if key_val != "types":
             line += ","
