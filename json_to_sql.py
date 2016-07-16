@@ -9,6 +9,11 @@ def getVal(data, field):
     if val:
         return str(val)
     return val
+    
+def fixJson(data):
+    if data:
+        return data.replace("'", '"')
+    return data
 
 def create_db(database_connection):
     c = database_connection.cursor()
@@ -42,12 +47,12 @@ def json_to_db(json_file_opened, database_connection):
             names = getVal(thisCard, "names")
             manaCost = getVal(thisCard, "manaCost")
             cmc = getVal(thisCard, "cmc")
-            colors = getVal(thisCard, "colors")
-            colorIdentity = getVal(thisCard, "colorIdentity")
+            colors = fixJson( getVal(thisCard, "colors") )
+            colorIdentity = fixJson( getVal(thisCard, "colorIdentity") )
             thisCard_type = getVal(thisCard, "type")
-            supertypes = getVal(thisCard, "supertypes")
-            types = getVal(thisCard, "types")
-            subtypes = getVal(thisCard, "subtypes")
+            supertypes = fixJson( getVal(thisCard, "supertypes") )
+            types = fixJson( getVal(thisCard, "types") )
+            subtypes = fixJson( getVal(thisCard, "subtypes") )
             rarity = getVal(thisCard, "rarity")
             text = getVal(thisCard, "text")
             flavor = getVal(thisCard, "flavor")
@@ -67,12 +72,12 @@ def json_to_db(json_file_opened, database_connection):
             reserved = getVal(thisCard, "reserved")
             releaseDate = getVal(thisCard, "releaseDate")
             starter = getVal(thisCard, "starter")
-            rulings = getVal(thisCard, "rulings")
-            foreignNames = getVal(thisCard, "foreignNames")
-            printings = getVal(thisCard, "printings")
+            rulings = fixJson( getVal(thisCard, "rulings") )
+            foreignNames = fixJson( getVal(thisCard, "foreignNames") )
+            printings = fixJson( getVal(thisCard, "printings") )
             originalText = getVal(thisCard, "originalText")
             originalType = getVal(thisCard, "originalType")
-            legalities = getVal(thisCard, "legalities")
+            legalities = fixJson( getVal(thisCard, "legalities") )
             source = getVal(thisCard, "source")
         
             thisCard_data = [thisCard_id, layout, name, names, manaCost, cmc, colors, colorIdentity, thisCard_type, supertypes, types, subtypes, rarity, text, flavor, artist, number, power, toughness, loyalty, multiverseid, variations, imageName, watermark, border, timeshifted, hand, life, reserved, releaseDate, starter, rulings, foreignNames, printings, originalText, originalType, legalities, source, setName, thisSet, setReleaseDate]
