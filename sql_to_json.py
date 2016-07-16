@@ -4,11 +4,6 @@ import sqlite3
 import os
 import fileinput
 
-def get_next(some_iterable, window=1):
-    items, nexts = tee(some_iterable, 2)
-    nexts = islice(nexts, window, None)
-    return izip_longest(items, nexts)
-
 def dict_from_row(row):
     return dict(zip(row.keys(), row))
 
@@ -56,6 +51,7 @@ def main():
     writeFile.write(json_code)
     writeFile.close()
     
+    # Additional hacks to now cleanup the file, needs to be redone / hopefully not needed
     with open(xml) as f:
         with open(xml2, 'w') as f2:
             for line in f.readlines():
@@ -85,7 +81,7 @@ def str_to_json(line, key_val):
     if '"' + key_val + '":' in line:
         line_index = line.index('"[')
         line = line[:line_index] + line[line_index:].replace('\\"', '"')[1:]
-            
+
         while line.strip()[-1:] != "]":
             line = line[:-1]
             
