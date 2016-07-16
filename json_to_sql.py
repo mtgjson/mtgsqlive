@@ -3,6 +3,7 @@ import json
 import sqlite3
 import time
 import os
+import sys
 
 def getVal(data, field):
     val = data.get(field)
@@ -72,8 +73,8 @@ def json_to_db(json_file_opened, database_connection):
             reserved = getVal(thisCard, "reserved")
             releaseDate = getVal(thisCard, "releaseDate")
             starter = getVal(thisCard, "starter")
-            rulings = fixJson( getVal(thisCard, "rulings") )
-            foreignNames = fixJson( getVal(thisCard, "foreignNames") )
+            rulings = getVal(thisCard, "rulings")
+            foreignNames = getVal(thisCard, "foreignNames")
             printings = fixJson( getVal(thisCard, "printings") )
             originalText = getVal(thisCard, "originalText")
             originalType = getVal(thisCard, "originalType")
@@ -87,14 +88,14 @@ def json_to_db(json_file_opened, database_connection):
     c.close()
     
 def main():
-    i = input("Create new database? 1 or 0: ")
-    d = os.path.join(os.path.expanduser(input("Location of database: ")), "Magic DB.db");
+    i = sys.argv[1] #input("Create new database? 1 or 0: ")
+    d = os.path.join(os.path.expanduser(sys.argv[2]), "Magic DB.db"); #input("Location of database: ")
     d = sqlite3.connect(d)
     
     if (i == '1'):
         create_db(d)
         
-    xml = os.path.join(os.path.expanduser(input("Location of AllSets-x.json: ")), "AllSets-x.json")
+    xml = os.path.join(os.path.expanduser(sys.argv[3]), "AllSets-x.json") #input("Location of AllSets-x.json: ")
     xml = json.load(open(xml, 'r'))
 
     json_to_db(xml, d)
