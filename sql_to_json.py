@@ -17,7 +17,7 @@ def remove_empty_keys(d):
 def db_to_json(database_connection):
     database_connection.row_factory = sqlite3.Row # Enable keys for the rows
     cursor = database_connection.cursor()
-    cursor.execute("SELECT DISTINCT setCode from cards LIMIT 15 OFFSET " + sys.argv[1])
+    cursor.execute("SELECT DISTINCT setCode from cards")
 
     mainDict = {}
     returnData = []
@@ -38,11 +38,11 @@ def db_to_json(database_connection):
     return mainDict
     
 def main():
-    d = os.path.join(os.path.expanduser(sys.argv[2]), "Magic DB.db")
+    d = os.path.join(os.path.expanduser(sys.argv[1]), "Magic DB.db")
     d = sqlite3.connect(d)
 
-    xml = os.path.join(os.path.expanduser(sys.argv[3]), "Output.tmp.json")
-    xml2 = os.path.join(os.path.expanduser(sys.argv[3]), "Output.json")
+    xml = os.path.join(os.path.expanduser(sys.argv[2]), "Output.tmp.json")
+    xml2 = os.path.join(os.path.expanduser(sys.argv[2]), "Output.json")
     
     json_code = json.dumps(db_to_json(d), sort_keys=True, indent=2)
     
