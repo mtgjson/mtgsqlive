@@ -4,6 +4,7 @@ import sqlite3
 import time
 import os
 import sys
+import re
 
 def getVal(data, field):
     val = data.get(field)
@@ -13,12 +14,15 @@ def getVal(data, field):
     
 def fixJson(data):
     if data:
-        return data.replace("'", '"')
+        p = re.compile("[A-Za-z]'[A-Za-z]")
+        for m in p.finditer(data):
+            data = data.replace(m.group(), m.group().replace("'", "TMP_HOLD"))
+        data = data.replace("'", '"').replace("TMP_HOLD", "\'")
     return data
 
 def create_db(database_connection):
     c = database_connection.cursor()
-    c.execute('create table cards (id, layout, name, names, manaCost, cmc, colors, colorIdentity, type, supertypes, types, subtypes, rarity, text, flavor, artist, number, power, toughness, loyalty, multiverseid, variations, imageName, watermark, border, timeshifted, hand, life, reserved, releaseDate, starter, rulings, foreignNames, printings, originalText, originalType, legalities, source, setName, setCode, setReleaseDate)')
+    c.execute('create table cards (id, layout, name, names, manaCost, cmc, colors, colorIdentity, type, supertypes, types, subtypes, rarity, text, flavor, artist, number, power, toughness, loyalty, multiverseid, variations, imageName, watermark, border, timeshifted, hand, life, reserved, releaseDate, starter, rulings, foreignNames, printings, originalText, originalType, legalities, source, setName, setCode, setReleaseDate, mciNumber)')
     c.execute('create table lastUpdated (datetime)')
     database_connection.commit()
     c.close()
@@ -44,7 +48,7 @@ def json_to_db(json_file_opened, database_connection):
             thisCard_id = getVal(thisCard, "id")
             layout = getVal(thisCard, "layout")
             name = getVal(thisCard, "name")
-            names = getVal(thisCard, "names")
+            names = fixJson( getVal(thisCard, "names") )
             manaCost = getVal(thisCard, "manaCost")
             cmc = getVal(thisCard, "cmc")
             colors = fixJson( getVal(thisCard, "colors") )
@@ -79,10 +83,11 @@ def json_to_db(json_file_opened, database_connection):
             originalType = getVal(thisCard, "originalType")
             legalities = fixJson( getVal(thisCard, "legalities") )
             source = getVal(thisCard, "source")
+            mciNumber = getVal(thisCard, "mciNumber")
         
-            thisCard_data = [thisCard_id, layout, name, names, manaCost, cmc, colors, colorIdentity, thisCard_type, supertypes, types, subtypes, rarity, text, flavor, artist, number, power, toughness, loyalty, multiverseid, variations, imageName, watermark, border, timeshifted, hand, life, reserved, releaseDate, starter, rulings, foreignNames, printings, originalText, originalType, legalities, source, setName, thisSet, setReleaseDate]
+            thisCard_data = [thisCard_id, layout, name, names, manaCost, cmc, colors, colorIdentity, thisCard_type, supertypes, types, subtypes, rarity, text, flavor, artist, number, power, toughness, loyalty, multiverseid, variations, imageName, watermark, border, timeshifted, hand, life, reserved, releaseDate, starter, rulings, foreignNames, printings, originalText, originalType, legalities, source, setName, thisSet, setReleaseDate, mciNumber]
 
-            c.execute('insert into cards values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', thisCard_data)
+            c.execute('insert into cards values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', thisCard_data)
     database_connection.commit()
     c.close()
     
