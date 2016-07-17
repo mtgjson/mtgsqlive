@@ -62,6 +62,8 @@ def main():
                 if '"legalities":' in line: continue
                 if '"source":' in line: continue
                 
+                
+                
                 if replace_and_write_these_keys(f2, line, "colorIdentity"): continue
                 if replace_and_write_these_keys(f2, line, "colors"): continue
                 if replace_and_write_these_keys(f2, line, "printings"): continue
@@ -104,6 +106,10 @@ def str_to_json(line, key_val):
 
         while line.strip()[-1:] != "]":
             line = line[:-1]
+            
+        # BFM causes an issue, manual fix
+        if '"Scariest", "Creature"' in line:
+            line = line.replace('"You"ll"', '"You\'ll"')
          
         try: line = line[:line_index] + json.dumps(json.loads(line[line_index:]), indent=2)
         except: line = line
