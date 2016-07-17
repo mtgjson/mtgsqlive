@@ -11,7 +11,12 @@ def dict_from_row(row):
 def remove_empty_keys(d):
     for k in list(d):
         if not d[k]:
-            del d[k]
+            try:
+                if d[k] == 0:
+                    continue
+                del d[k]
+            except:
+                print("BOOBOO")
     return d
 
 def db_to_json(database_connection):
@@ -57,6 +62,11 @@ def main():
     writeFile.write(json_code)
     writeFile.close()
     
+    int_strings = ('cmc":', 'loyalty":', 'multiverseid":', 'hand":', 'life":')
+    bool_strings = ('reserved":', 'starter":', 'timeshifted":')
+    skip_strings = ('setCode":', 'setName":', 'setReleaseDate":')
+    bonus_comma_strings = ('variations":', 'watermark":')
+    fix_rarity = False            
     # Additional hacks to now cleanup the file, needs to be redone / hopefully not needed
     with open(xml) as f:
         with open(xml2, 'w') as f2:
@@ -68,8 +78,10 @@ def main():
                 if '"originalType":' in line: continue
                 if '"legalities":' in line: continue
                 if '"source":' in line: continue
-                
-                
+
+                if any(s in line for s in skip_strings): continue
+                elif any(s in line for s in int_strings):
+                    line = str_to_int(line)
                 
                 if replace_and_write_these_keys(f2, line, "colorIdentity"): continue
                 if replace_and_write_these_keys(f2, line, "colors"): continue
@@ -78,16 +90,60 @@ def main():
                 if replace_and_write_these_keys(f2, line, "subtypes"): continue
                 if replace_and_write_these_keys(f2, line, "legalities"): continue
                 if replace_and_write_these_keys(f2, line, "types"): continue
+                if replace_and_write_these_keys(f2, line, "names"): continue
+                
                 #if replace_and_write_these_keys(f2, line, "rulings"): continue
                 #if replace_and_write_these_keys(f2, line, "foreignNames"): continue
                 
-                if '"variations":' in line or '"watermark":' in line:
+                if any(s in line for s in bool_strings):
+                    line = str_to_bool(line)
+                    
+                
+                
+                if 'token card' in line:
+                    fix_rarity = True
+                elif fix_rarity and 'rarity":' in line:
+                    while line.strip()[-1:] != '"':
+                        line = line[:-1]
+                    fix_rarity = False
+                
+                if any(s in line for s in bonus_comma_strings):
                     f2.write(",")
+                    
+                if replace_and_write_these_keys(f2, line, "variations"): continue
 
                 f2.write(line)
         f2.close()
         cleanup_json(xml2)
     os.remove(xml)                     
+
+def str_to_int(line):
+    try:
+        line_to_int = line.index('": "')
+        line_after_int = line.index('",')
+    except:
+        return line
+
+    try:
+        line = line[:line_to_int] + '": ' + line[line_to_int + 4:line_after_int] + line[line_after_int + 1:]
+    except:
+        print(line_to_int, line_after_int, line)
+
+    return line
+
+def str_to_bool(line):
+    try:
+        line_to_int = line.index('": "')
+        line_after_int = line.index('",')
+    except:
+        return line
+
+    try:
+        line = line[:line_to_int] + '": ' + line[line_to_int + 4:line_after_int].lower() + line[line_after_int + 1:]
+    except:
+        print(line_to_int, line_after_int, line[line_to_int + 4:line_after_int], line)
+
+    return line
 
 def cleanup_json(file_path):
     jsonFile = open(file_path, "r")
@@ -101,7 +157,12 @@ def cleanup_json(file_path):
 def replace_and_write_these_keys(file_opened, line, key_val):
     retVal = str_to_json(line, key_val)
     if retVal:
-        file_opened.write(retVal)
+        if key_val != "variations":
+            file_opened.write(retVal)
+        else:
+            while retVal.strip()[-1:] != "]":
+                retVal = retVal[:-1]
+            file_opened.write(retVal)
         return True
 
 # Yes this is a mess, but it works for now
@@ -113,10 +174,6 @@ def str_to_json(line, key_val):
 
         while line.strip()[-1:] != "]":
             line = line[:-1]
-            
-        # BFM causes an issue, manual fix
-        if '"Scariest", "Creature"' in line:
-            line = line.replace('"You"ll"', '"You\'ll"')
          
         try: line = line[:line_index] + json.dumps(json.loads(line[line_index:]), indent=2)
         except: line = line
