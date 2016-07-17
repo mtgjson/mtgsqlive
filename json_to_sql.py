@@ -38,7 +38,6 @@ def json_to_db(json_file_opened, database_connection):
 
         setName = data["name"]
         setReleaseDate = data["releaseDate"]
-    
         setCards = data["cards"] # Now iterate through the setCards for each card in the set
     
         for thisCard in setCards:
@@ -88,14 +87,14 @@ def json_to_db(json_file_opened, database_connection):
     c.close()
     
 def main():
-    i = sys.argv[1] #input("Create new database? 1 or 0: ")
-    d = os.path.join(os.path.expanduser(sys.argv[2]), "Magic DB.db"); #input("Location of database: ")
+    i = sys.argv[1] # Should create new DB 
+    d = os.path.expanduser(sys.argv[2]) # File location for database
     d = sqlite3.connect(d)
     
     if (i == '1'):
         create_db(d)
         
-    xml = os.path.join(os.path.expanduser(sys.argv[3]), "AllSets-x.json") #input("Location of AllSets-x.json: ")
+    xml = os.path.expanduser(sys.argv[3]) # File location for input file
     xml = json.load(open(xml, 'r'))
 
     json_to_db(xml, d)
