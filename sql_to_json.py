@@ -19,7 +19,7 @@ def db_to_json(database_connection):
     cursor = database_connection.cursor()
     cursor.execute("SELECT DISTINCT setCode from cards LIMIT 15 OFFSET " + sys.argv[1])
 
-    mainDict = []
+    mainDict = {}
     returnData = []
     rows = cursor.fetchall()
     for setCode in rows:
@@ -31,9 +31,10 @@ def db_to_json(database_connection):
             row = remove_empty_keys(dict_from_row(row))
             returnData.append(row)
 
-        mainDict.append([setCode, returnData])
+        mainDict[setCode["setCode"]] = returnData
         returnData = []
     database_connection.close()
+
     return mainDict
     
 def main():
@@ -61,7 +62,6 @@ def main():
                 if '"legalities":' in line: continue
                 if '"source":' in line: continue
                 
-                
                 if replace_and_write_these_keys(f2, line, "colorIdentity"): continue
                 if replace_and_write_these_keys(f2, line, "colors"): continue
                 if replace_and_write_these_keys(f2, line, "printings"): continue
@@ -72,16 +72,23 @@ def main():
                 #if replace_and_write_these_keys(f2, line, "rulings"): continue
                 #if replace_and_write_these_keys(f2, line, "foreignNames"): continue
                 
-                if '"variations":' in line:
-                    f2.write(",")
-                if '"watermark":' in line:
+                if '"variations":' in line or '"watermark":' in line:
                     f2.write(",")
 
-                    
                 f2.write(line)
         f2.close()
+        cleanup_json(xml2)
     os.remove(xml)                     
-     
+
+def cleanup_json(file_path):
+    jsonFile = open(file_path, "r")
+    data = json.load(jsonFile)
+    jsonFile.close()
+
+    jsonFile = open(file_path, "w+")
+    jsonFile.write(json.dumps(data, indent=4, sort_keys=True))
+    jsonFile.close()
+
 def replace_and_write_these_keys(file_opened, line, key_val):
     retVal = str_to_json(line, key_val)
     if retVal:
