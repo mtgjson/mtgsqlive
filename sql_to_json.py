@@ -27,22 +27,29 @@ def db_to_json(database_connection):
         cursor.execute("SELECT * FROM cards WHERE setCode = '%s'" % setCode["setCode"])
         card_rows = cursor.fetchall()
 
+        setName = None
+        setReleaseDate = None
         for row in card_rows:
             row = remove_empty_keys(dict_from_row(row))
             returnData.append(row)
+            if not setName and not setReleaseDate:
+                setName = row["setName"]
+                setReleaseDate = row["setReleaseDate"]
 
-        mainDict[setCode["setCode"]] = returnData
+        mainDict[setCode["setCode"]] = dict(zip(["cards", "name", "releaseDate"], [returnData, setName, setReleaseDate]))
+        setName = None
+        setReleaseDate = None
         returnData = []
     database_connection.close()
 
     return mainDict
     
 def main():
-    d = os.path.join(os.path.expanduser(sys.argv[1]), "Magic DB.db")
+    d = os.path.expanduser(sys.argv[1]) # File location for database
     d = sqlite3.connect(d)
 
-    xml = os.path.join(os.path.expanduser(sys.argv[2]), "Output.tmp.json")
-    xml2 = os.path.join(os.path.expanduser(sys.argv[2]), "Output.json")
+    xml = "/tmp/Output.tmp.json"
+    xml2 = os.path.expanduser(sys.argv[2]) # File location for output
     
     json_code = json.dumps(db_to_json(d), sort_keys=True, indent=2)
     
