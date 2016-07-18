@@ -86,6 +86,10 @@ def json_to_db(json_file_opened, database_connection):
     c.close()
     
 def main():
+    if len(sys.argv) != 4:
+        print("Must provide 3 arguements: should_create, database_location, json_location")
+        os._exit(1)
+
     i = sys.argv[1] # Should create new DB 
     db_path = os.path.expanduser(sys.argv[2]) # File location for database
     
