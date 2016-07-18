@@ -9,15 +9,29 @@ import re
 def getVal(data, field):
     val = data.get(field)
     if val:
-        return str(val)
+        return str(val).replace('”', '"').replace('“', '"').replace('’', "'").replace("\\", "")
     return val
     
+def fixJson_foreign(data):
+    if data:
+        data = data.replace("'language'", '"language"')
+        data = data.replace("'multiverseid'", '"multiverseid"')
+        data = data.replace("'name'", '"name"')
+        data = data.replace("', \"", '", "')
+        data = data.replace("\": '", "\": \"")
+        data = data.replace("'}", '"}')
+    return data
+
 def fixJson(data):
     if data:
-        p = re.compile("[A-Za-z]'[A-Za-z]")
+        p = re.compile("[\w]'[\w]")
         for m in p.finditer(data):
             data = data.replace(m.group(), m.group().replace("'", "TMP_HOLD"))
-        data = data.replace("'", '"').replace("TMP_HOLD", "\'")
+
+        p = re.compile("[\w]\"[\w]")
+        for m in p.finditer(data):
+            data = data.replace(m.group(), m.group().replace("'", "DREAK_HOLD"))
+        data = data.replace("'", '"').replace("TMP_HOLD", "'").replace("DREAK_HOLD", '"')
     return data
 
 def create_db(database_connection):
@@ -76,8 +90,8 @@ def json_to_db(json_file_opened, database_connection):
             reserved = getVal(thisCard, "reserved")
             releaseDate = getVal(thisCard, "releaseDate")
             starter = getVal(thisCard, "starter")
-            rulings = getVal(thisCard, "rulings")
-            foreignNames = getVal(thisCard, "foreignNames")
+            rulings = ( getVal(thisCard, "rulings") )
+            foreignNames = fixJson_foreign( getVal(thisCard, "foreignNames") )
             printings = fixJson( getVal(thisCard, "printings") )
             originalText = getVal(thisCard, "originalText")
             originalType = getVal(thisCard, "originalType")
@@ -94,10 +108,14 @@ def json_to_db(json_file_opened, database_connection):
 def main():
     i = sys.argv[1] # Should create new DB 
     d = os.path.expanduser(sys.argv[2]) # File location for database
-    d = sqlite3.connect(d)
     
     if (i == '1'):
+        if os.path.isfile(d):
+            os.remove(d)
+        d = sqlite3.connect(d)
         create_db(d)
+    else:
+        d = sqlite3.connect(d)
         
     xml = os.path.expanduser(sys.argv[3]) # File location for input file
     xml = json.load(open(xml, 'r'))

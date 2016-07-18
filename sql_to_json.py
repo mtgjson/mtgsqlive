@@ -71,13 +71,8 @@ def main():
     with open(xml) as f:
         with open(xml2, 'w') as f2:
             for line in f.readlines():
+                # These still need proper parsing
                 if '"rulings":' in line: continue
-                if '"foreignNames":' in line: continue
-                if '"printings":' in line: continue
-                if '"originalText":' in line: continue
-                if '"originalType":' in line: continue
-                if '"legalities":' in line: continue
-                if '"source":' in line: continue
 
                 if any(s in line for s in skip_strings): continue
                 elif any(s in line for s in int_strings):
@@ -92,13 +87,11 @@ def main():
                 if replace_and_write_these_keys(f2, line, "types"): continue
                 if replace_and_write_these_keys(f2, line, "names"): continue
                 
-                #if replace_and_write_these_keys(f2, line, "rulings"): continue
-                #if replace_and_write_these_keys(f2, line, "foreignNames"): continue
+                if replace_and_write_these_keys(f2, line, "rulings"): continue
+                if replace_and_write_these_keys(f2, line, "foreignNames"): continue
                 
                 if any(s in line for s in bool_strings):
                     line = str_to_bool(line)
-                    
-                
                 
                 if 'token card' in line:
                     fix_rarity = True
@@ -170,13 +163,20 @@ def str_to_json(line, key_val):
     if '"' + key_val + '":' in line:
         line_index = line.index('"[')
 
-        line = line[:line_index] + line[line_index:].replace('\\"', '"').replace('”', '\\"').replace('“', '\\"').replace('’', "\\'")[1:]
+        if '377105' in line: # This card is just a mess
+            line = line.replace("Schlafender Drache\\\"", "Schlafender Drache_v_v_")
+            line = line[:line_index] + line[line_index:].replace('\\"', '"')[1:]
+            line = line.replace("_v_v_", "\\\"")
+            line = line.replace('Kongming, "Sleeping Dragon"', 'Kongming, \\"Sleeping Dragon\\"')
+        else:
+            line = line[:line_index] + line[line_index:].replace('\\"', '"')[1:]
 
         while line.strip()[-1:] != "]":
             line = line[:-1]
-         
+
         try: line = line[:line_index] + json.dumps(json.loads(line[line_index:]), indent=2)
-        except: line = line
+        except:
+            line = line
             
         if key_val != "types":
             line += ","
