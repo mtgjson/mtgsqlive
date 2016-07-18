@@ -4,45 +4,24 @@ import sqlite3
 import time
 import os
 import sys
-import re
 
-def getVal(data, field):
-    val = data.get(field)
-    if val:
-        return str(val).replace('”', '"').replace('“', '"').replace('’', "'").replace("\\", "")
-    return val
-    
-def fixJson_foreign(data):
-    if data:
-        data = data.replace("'language'", '"language"')
-        data = data.replace("'multiverseid'", '"multiverseid"')
-        data = data.replace("'name'", '"name"')
-        data = data.replace("', \"", '", "')
-        data = data.replace("\": '", "\": \"")
-        data = data.replace("'}", '"}')
-    return data
-
-def fixJson(data):
-    if data:
-        p = re.compile("[\w]'[\w]")
-        for m in p.finditer(data):
-            data = data.replace(m.group(), m.group().replace("'", "TMP_HOLD"))
-
-        p = re.compile("[\w]\"[\w]")
-        for m in p.finditer(data):
-            data = data.replace(m.group(), m.group().replace("'", "DREAK_HOLD"))
-        data = data.replace("'", '"').replace("TMP_HOLD", "'").replace("DREAK_HOLD", '"')
-    return data
-
+# Create the database
 def create_db(database_connection):
     c = database_connection.cursor()
     c.execute('create table cards (id, layout, name, names, manaCost, cmc, colors, colorIdentity, type, supertypes, types, subtypes, rarity, text, flavor, artist, number, power, toughness, loyalty, multiverseid, variations, imageName, watermark, border, timeshifted, hand, life, reserved, releaseDate, starter, rulings, foreignNames, printings, originalText, originalType, legalities, source, setName, setCode, setReleaseDate, mciNumber)')
     c.execute('create table lastUpdated (datetime)')
     database_connection.commit()
     c.close()
-
+    
+def getVal(data, field):
+    value = data.get(field)
+    if value:
+        return json.dumps(value)
+    
 def json_to_db(json_file_opened, database_connection):    
     c = database_connection.cursor()
+    
+    # Insert last updated time to database (so if you use the same people know when last updated)
     c.execute('insert into lastUpdated values (?)', [str(time.strftime("%Y-%m-%d %H:%M:%S"))])
 
     # Get the setnames in the AllSets file and put them into a dictionary for later use
@@ -62,15 +41,15 @@ def json_to_db(json_file_opened, database_connection):
             thisCard_id = getVal(thisCard, "id")
             layout = getVal(thisCard, "layout")
             name = getVal(thisCard, "name")
-            names = fixJson( getVal(thisCard, "names") )
+            names = getVal(thisCard, "names")
             manaCost = getVal(thisCard, "manaCost")
             cmc = getVal(thisCard, "cmc")
-            colors = fixJson( getVal(thisCard, "colors") )
-            colorIdentity = fixJson( getVal(thisCard, "colorIdentity") )
+            colors = getVal(thisCard, "colors")
+            colorIdentity = getVal(thisCard, "colorIdentity")
             thisCard_type = getVal(thisCard, "type")
-            supertypes = fixJson( getVal(thisCard, "supertypes") )
-            types = fixJson( getVal(thisCard, "types") )
-            subtypes = fixJson( getVal(thisCard, "subtypes") )
+            supertypes =  getVal(thisCard, "supertypes")
+            types =  getVal(thisCard, "types")
+            subtypes =  getVal(thisCard, "subtypes")
             rarity = getVal(thisCard, "rarity")
             text = getVal(thisCard, "text")
             flavor = getVal(thisCard, "flavor")
@@ -90,37 +69,38 @@ def json_to_db(json_file_opened, database_connection):
             reserved = getVal(thisCard, "reserved")
             releaseDate = getVal(thisCard, "releaseDate")
             starter = getVal(thisCard, "starter")
-            rulings = ( getVal(thisCard, "rulings") )
-            foreignNames = fixJson_foreign( getVal(thisCard, "foreignNames") )
-            printings = fixJson( getVal(thisCard, "printings") )
+            rulings = getVal(thisCard, "rulings")
+            foreignNames = getVal(thisCard, "foreignNames")
+            printings =  getVal(thisCard, "printings")
             originalText = getVal(thisCard, "originalText")
             originalType = getVal(thisCard, "originalType")
-            legalities = fixJson( getVal(thisCard, "legalities") )
+            legalities =  getVal(thisCard, "legalities")
             source = getVal(thisCard, "source")
             mciNumber = getVal(thisCard, "mciNumber")
         
             thisCard_data = [thisCard_id, layout, name, names, manaCost, cmc, colors, colorIdentity, thisCard_type, supertypes, types, subtypes, rarity, text, flavor, artist, number, power, toughness, loyalty, multiverseid, variations, imageName, watermark, border, timeshifted, hand, life, reserved, releaseDate, starter, rulings, foreignNames, printings, originalText, originalType, legalities, source, setName, thisSet, setReleaseDate, mciNumber]
 
+            # Insert thisCard into the database
             c.execute('insert into cards values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)', thisCard_data)
     database_connection.commit()
     c.close()
     
 def main():
     i = sys.argv[1] # Should create new DB 
-    d = os.path.expanduser(sys.argv[2]) # File location for database
+    db_path = os.path.expanduser(sys.argv[2]) # File location for database
     
     if (i == '1'):
-        if os.path.isfile(d):
-            os.remove(d)
-        d = sqlite3.connect(d)
-        create_db(d)
+        if os.path.isfile(db_path):
+            os.remove(db_path)
+        db_path = sqlite3.connect(db_path)
+        create_db(db_path)
     else:
-        d = sqlite3.connect(d)
+        db_path = sqlite3.connect(db_path)
         
-    xml = os.path.expanduser(sys.argv[3]) # File location for input file
-    xml = json.load(open(xml, 'r'))
+    json_path = os.path.expanduser(sys.argv[3]) # File location for input file
+    json_path = json.load(open(json_path, 'r'))
 
-    json_to_db(xml, d)
+    json_to_db(json_path, db_path)
 
 if __name__ == '__main__':
     main()
