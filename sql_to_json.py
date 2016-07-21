@@ -53,7 +53,7 @@ def db_to_json_allsets(database_connection):
     rows = cursor.fetchall()
     for setCode in rows:
         setCode = set_dictionary(setCode)
-        cursor.execute("SELECT * FROM cards WHERE setCode = ?" % [setCode["setCode"]])
+        cursor.execute("SELECT * FROM cards WHERE setCode = ?", [setCode["setCode"]])
         card_rows = cursor.fetchall()
 
         setName = None
