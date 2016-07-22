@@ -3,7 +3,7 @@
 [![Join the chat at https://gitter.im/mtgjson/mtgsqlive](https://badges.gitter.im/mtgjson/mtgsqlive.svg)](https://gitter.im/mtgjson/mtgsqlive)
 
 ### Goals
-The goals of this project include creating a downloadable SQLite database file containing all cards from the game Magic: The Gathering. We are looking for a way to stop being dependent on Gatherer for card data due to their delayed update times and egregious errors that slip by quality control, which we can correct in real time.
+The goals of this project include creating a downloadable SQLite database file containing all cards from the game Magic: The Gathering. We are looking for a way to stop being dependent on Gatherer for card data due to their delayed update times and egregious errors that slip by quality control, which we can correct in real time. While we want to claim we are completely independent from Gatherer, we must first start with their data and then manually edit it to be correct. Once that is accomplished, we are then no longer dependent on them for card data, except for rullings.
 
 
 ### How We Did It
@@ -16,11 +16,14 @@ When "spoiler season" (a few times a year when Wizards of the Coast spoils new c
 
 Projects can pull in our complete database for their projects in order to have a full Magic: the Gathering card database at all times. There is a special table, `lastUpdated`, which contains all of the times that the database was updated, either manually or via an import from MTGJSON (once the set officially is released on Gatherer).
 
+**NOTE:** 
+
 ### How to Operate
 
 If you would like to use our pre-compiled database for your project, simply download the database and read the `lastUpdated` table to know when the database was last updated. If you would rather create your own database, we have included the tools to do such.
 
 To turn your AllSets JSON file into a SQLite database, run the following command:
+
 `./json_to_sql.py create_new_db db_location json_file_location`
 
 Where:
@@ -32,6 +35,7 @@ If your project is already dependent on a JSON format, such as if you pull in th
 
 
 To turn a SQLite database file into a JSON file, run the following command:
+
 `./sql_to_json.py db_location output_file_location sets_or_cards`
 
 Where:
