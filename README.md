@@ -20,7 +20,7 @@ Projects can pull in our complete database for their projects in order to have a
 
 ### How To Operate
 
-If you would like to use our pre-compiled database for your project, simply download the database and read the `lastUpdated` table to know when the database was last updated. If you would rather create your own database, we have included the tools to do such.
+If you would like to use our pre-compiled database for your project, simply download the database, which you can find on the official releases of this project, and either see when the release was published or read the `lastUpdated` table to know when the database was last updated. If you would rather create your own database, we have included the tools to do such.
 
 To turn your AllSets JSON file into a SQLite database, run the following command: <br> <kbd>./json_to_sql.py create_new_db db_location json_file_location</kbd>
 
@@ -30,7 +30,6 @@ Where:
 * `json_file_location` is the location of the JSON file you want to import to your database
 
 If your project is already dependent on a JSON format, such as if you pull in the data from MTGJSON and parse it internally, you can create a JSON file from our database with our conversion tool!
-
 
 To turn a SQLite database file into a JSON file, run the following command: <br> <kbd>./sql_to_json.py db_location output_file_location sets_or_cards</kbd>
 
