@@ -18,9 +18,7 @@ When "spoiler season" (a few times a year when Wizards of the Coast spoils new c
 
 Projects can pull in our complete database for their projects in order to have a full Magic: the Gathering card database at all times. There is a special table, `lastUpdated`, which contains all of the times that the database was updated, either manually or via an import from MTGJSON (once the set officially is released on Gatherer).
 
-**NOTE:** 
-
-### How to Operate
+### How To Operate
 
 If you would like to use our pre-compiled database for your project, simply download the database and read the `lastUpdated` table to know when the database was last updated. If you would rather create your own database, we have included the tools to do such.
 
