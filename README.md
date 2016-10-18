@@ -2,6 +2,11 @@
 
 [![Join the chat at https://gitter.im/mtgjson/mtgsqlive](https://badges.gitter.im/mtgjson/mtgsqlive.svg)](https://gitter.im/mtgjson/mtgsqlive)
 
+### How To Clone
+To clone over HTTPS: `git clone --depth=1 https://github.com/mtgjson/mtgsqlive.git mtgsqlive`
+
+To clone over SSH: `git clone --depth=1 git@github.com:mtgjson/mtgsqlive.git mtgsqlive`
+
 ### Goals
 The goals of this project include creating a downloadable SQLite database file containing all cards from the game Magic: The Gathering. We are looking for a way to stop being dependent on Gatherer for card data due to their delayed update times and egregious errors that slip by quality control, which we can correct in real time.
 
