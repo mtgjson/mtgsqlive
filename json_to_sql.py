@@ -102,8 +102,8 @@ def json_to_db(aas_json_data, ac_db_connection):
         las_set_names.append(ls_col_name)
 
     # Iterate through each set, one at a time
-    for ls_card_set_name in las_set_names:
-        las_set_data = aas_json_data[ls_card_set_name]  # All of the data for the set (I.e. SOI-x.json)
+    for ls_card_set_code in las_set_names:
+        las_set_data = aas_json_data[ls_card_set_code]  # All of the data for the set (I.e. SOI-x.json)
 
         ls_card_set_name = las_set_data["name"]
         ls_set_release_date = las_set_data["releaseDate"]
@@ -159,7 +159,7 @@ def json_to_db(aas_json_data, ac_db_connection):
                 ln_card_multiverse_id, lan_card_variations, ls_card_image_name, ls_card_watermark, ls_card_border,
                 lb_card_time_shifted, ln_card_hand, ln_card_life, lb_card_reserved, ls_card_release_date,
                 lb_card_starter, las_card_rulings, las_card_foreign_names, las_card_printings, ls_card_original_text,
-                ls_card_original_type, las_card_legalities, ls_card_source, ls_card_set_name, ls_card_set_name,
+                ls_card_original_type, las_card_legalities, ls_card_source, ls_card_set_name, ls_card_set_code,
                 ls_set_release_date, ln_card_mci_id
             ]
 
