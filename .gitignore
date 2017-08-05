@@ -88,3 +88,9 @@ ENV/
 # Rope project settings
 .ropeproject
 .idea/
+
+# Mac Files
+.DS_Store
+
+# No VIM saves
+*~

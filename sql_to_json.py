@@ -2,22 +2,23 @@
 import json
 import sqlite3
 import os
-import fileinput
 import sys
+
 
 def id(x):
     return x
 
-DECODERS = { 'setName': id, 'setCode': id, 'setReleaseDate': id }
 
 def dict_from_row(row):
-    return {k: DECODERS.get(k, json.loads)(v) for k, v in zip(row.keys(), row) if v is not None}    
+    return {k: ga_decoders.get(k, json.loads)(v) for k, v in zip(row.keys(), row) if v is not None}
+
 
 def remove_set_info(dictionary):
     dictionary.pop("setName", None)
     dictionary.pop("setCode", None)
     dictionary.pop("setReleaseDate", None)
     return dictionary
+
 
 def remove_unneeded(dictionary):
     dictionary.pop("artist", None)
@@ -40,53 +41,51 @@ def remove_unneeded(dictionary):
     dictionary = remove_set_info(dictionary)
     return dictionary
 
+
 def set_dictionary(row):
     return dict(zip(row.keys(), row))
 
-def db_to_json_allsets(database_connection):
-    database_connection.row_factory = sqlite3.Row # Enable keys for the rows
+
+def db_to_json_all_sets(database_connection):
+    database_connection.row_factory = sqlite3.Row  # Enable keys for the rows
     cursor = database_connection.cursor()
     cursor.execute("SELECT DISTINCT setCode from cards")
 
-    mainDict = {}
-    returnData = []
-    rows = cursor.fetchall()
-    for setCode in rows:
-        setCode = set_dictionary(setCode)
-        cursor.execute("SELECT * FROM cards WHERE setCode = ?", [setCode["setCode"]])
+    la_main_dict = {}
+    las_rows = cursor.fetchall()
+    for ls_set_code in las_rows:
+        la_return_data = []
+        ls_set_code = set_dictionary(ls_set_code)
+        cursor.execute("SELECT * FROM cards WHERE setCode = ?", [ls_set_code["setCode"]])
         card_rows = cursor.fetchall()
 
-        setName = None
-        setReleaseDate = None
-        for row in card_rows:
-            row = dict_from_row(row) # Turn SQL.Row -> Dictionary
+        ls_set_name = None
+        ls_set_release_date = None
+        for las_row in card_rows:
+            las_row = dict_from_row(las_row)  # Turn SQL.Row -> Dictionary
 
             # Set temporary variables used for JSON Sorting data for AllSets
-            if not setName or not setReleaseDate:
-                setName = row["setName"]
-                setReleaseDate = row["setReleaseDate"]
+            if not ls_set_name or not ls_set_release_date:
+                ls_set_name = las_row["setName"]
+                ls_set_release_date = las_row["setReleaseDate"]
 
             # Remove temporary variables from the dictionary, as they're unneeded
-            row = remove_set_info(row)
-            returnData.append(row)
+            las_row = remove_set_info(las_row)
+            la_return_data.append(las_row)
 
         # Inset into dictionary the JSON data
-        mainDict[setCode["setCode"]] = dict(zip(["cards", "name", "releaseDate"], [returnData, setName, setReleaseDate]))
-
-        # Reset variables
-        setName = None
-        setReleaseDate = None
-        returnData = []
+        la_main_dict[ls_set_code["setCode"]] = dict(
+            zip(["cards", "name", "releaseDate"], [la_return_data, ls_set_name, ls_set_release_date]))
 
     database_connection.close()
+    return la_main_dict
 
-    return mainDict
 
-def db_to_json_allcards(database_connection):
-    database_connection.row_factory = sqlite3.Row # Enable keys for the row
+def db_to_json_all_cards(database_connection):
+    database_connection.row_factory = sqlite3.Row  # Enable keys for the row
     cursor = database_connection.cursor()
-    
-    mainDict = {}
+
+    las_main_dict = {}
     cursor.execute("SELECT DISTINCT name from cards ORDER BY name, setReleaseDate ASC")
     rows = cursor.fetchall()
 
@@ -97,27 +96,28 @@ def db_to_json_allcards(database_connection):
         for row in card_rows:
             row = dict_from_row(row)
             row = remove_unneeded(row)
-            mainDict[json.loads(this_card["name"])] = row
-    return mainDict
+            las_main_dict[json.loads(this_card["name"])] = row
+    return las_main_dict
+
 
 def main():
     if len(sys.argv) != 4:
-        print("Must provide 3 arguements: database_location, json_output_location, sets_or_cards")
-        os._exit(1)
+        print("USAGE: %s <database input path> <json output path> <'sets' or 'cards'>" % sys.argv[0])
+        exit(1)
 
-    db_path = sqlite3.connect(os.path.expanduser(sys.argv[1])) # File location for database
-    file_path = os.path.expanduser(sys.argv[2]) # File location for output
-    
-    if (sys.argv[3] == "sets"):
-        dictionary = db_to_json_allsets(db_path)
-    elif (sys.argv[3] == "cards"):
-        dictionary = db_to_json_allcards(db_path)
+    ls_db_path = sqlite3.connect(os.path.expanduser(sys.argv[1]))  # File location for database
+    ls_json_path = os.path.expanduser(sys.argv[2])  # File location for output
+    lb_is_sets = sys.argv[3] == "sets"  # Are we doing sets or cards
+
+    if lb_is_sets:
+        dictionary = db_to_json_all_sets(ls_db_path)
     else:
-        print('Final arguement must be "sets" or "cards"')
-        os._exit(1)
+        dictionary = db_to_json_all_cards(ls_db_path)
 
-    with open(file_path, 'w') as json_f:
+    with open(ls_json_path, 'w') as json_f:
         json.dump(dictionary, json_f, sort_keys=True, indent=4)
 
+
 if __name__ == '__main__':
+    ga_decoders = {'setName': id, 'setCode': id, 'setReleaseDate': id}
     main()
