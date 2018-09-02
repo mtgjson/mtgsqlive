@@ -265,8 +265,9 @@ def load_cards(json_data, db_connection):
 
             # Link printings
             card_printings = get_value_from_key(card_in_set, "printings")
-            for printing in card_printings:
-                cursor.execute("INSERT INTO lnkCardPrinting (cId, pId) VALUES (?, ?);", (card_db_id, get_db_id('luPrintings', 'printingName', 'pID', printing, cursor)))
+            if card_printings:
+                for printing in card_printings:
+                    cursor.execute("INSERT INTO lnkCardPrinting (cId, pId) VALUES (?, ?);", (card_db_id, get_db_id('luPrintings', 'printingName', 'pID', printing, cursor)))
 
             # Link colors
             card_colors = get_value_from_key(card_in_set, "colors")

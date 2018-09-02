@@ -68,6 +68,7 @@ target/
 
 # IPython Notebook
 .ipynb_checkpoints
+*.ipynb
 
 # pyenv
 .python-version
@@ -94,3 +95,9 @@ ENV/
 
 # No VIM saves
 *~
+
+# Json file
+*.json
+
+# data base
+*.db
