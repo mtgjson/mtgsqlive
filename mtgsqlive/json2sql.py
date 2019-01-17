@@ -16,9 +16,11 @@ def main() -> None:
     Main function
     """
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", help="input file (json)", required=True, metavar="file")
     parser.add_argument(
-        "-o", help="output file (sqlite)", required=True, metavar="file"
+        "-i", help="input file (AllSets.json)", required=True, metavar="file"
+    )
+    parser.add_argument(
+        "-o", help="output file (*.sqlite)", required=True, metavar="file"
     )
     args = parser.parse_args()
 
@@ -48,9 +50,10 @@ def validate_io_streams(input_file: pathlib.Path, output_file: pathlib.Path) -> 
         LOGGER.fatal("Input file {} does not exist.".format(input_file))
         return False
 
+    output_file.parent.mkdir(exist_ok=True)
     if output_file.is_file():
         LOGGER.warning("Output file {} exists already, moving it.".format(output_file))
-        output_file.replace(output_file.name + ".old")
+        output_file.replace(output_file.parent.joinpath(output_file.name + ".old"))
 
     return True
 
@@ -374,5 +377,3 @@ def sql_dict_insert(
     query = "INSERT INTO " + table + " (%s) VALUES (%s)" % (columns, placeholders)
     cursor.execute(query, data)
     sql_connection.commit()
-
-
