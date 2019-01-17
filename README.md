@@ -1,47 +1,39 @@
-# MTGSQLive
+# [**MTGSQLive**](https://mtgjson.com/)
 
-[![Join the chat at https://gitter.im/mtgjson/mtgsqlive](https://badges.gitter.im/mtgjson/mtgsqlive.svg)](https://gitter.im/mtgjson/mtgsqlive)
+# Connect With Us
+Discord via [![Discord](https://img.shields.io/discord/224178957103136779.svg)](https://discord.gg/74GUQDE)
 
-### How To Clone
-To clone over HTTPS: `git clone --depth=1 https://github.com/mtgjson/mtgsqlive.git mtgsqlive`
+Gitter via [![Gitter](https://img.shields.io/gitter/room/nwjs/nw.js.svg)](https://gitter.im/mtgjson/mtgjson4)
 
-To clone over SSH: `git clone --depth=1 git@github.com:mtgjson/mtgsqlive.git mtgsqlive`
 
 ### Goals
-The goals of this project include creating a downloadable SQLite database file containing all cards from the game Magic: The Gathering. We are looking for a way to stop being dependent on Gatherer for card data due to their delayed update times and egregious errors that slip by quality control, which we can correct in real time.
+The goals of this project are to extend the MTGJSONv4 protocols and give an option for pre-processed SQLite downloads.
+lly edit it to be correct. Once that is accomplished, we are then no longer dependent on them for card data, except for rullings.
 
-While we want to claim we are completely independent from Gatherer, we must first start with their data and then manually edit it to be correct. Once that is accomplished, we are then no longer dependent on them for card data, except for rullings.
+# About Us
+
+MTGJSON and MTGSQlive are open sourced database creation and distribution tool for [*Magic: The Gathering*](https://magic.wizards.com/) cards, specifically in [JSON](https://json.org/) and [SQLite](https://www.sqlite.org/index.html) format.
+
+You can find our documentation with all properties [here](https://mtgjson.com/docs.html).
+
+To provide feedback and/or bug reports, please [open a ticket](https://github.com/mtgjson/mtgsqlite/issues/new/) as it is the best way for us to communicate with the public.
+
+If you would like to join or assist the development of the project, you can [join us on Discord](https://discord.gg/Hgyg7GJ) to discuss things further.
+
+# How To Use
+
+>**Note:** These are the build directions to compile your own SQLite file.<br>
+>If you are looking for the pre-compiled SQLite file, you can download it from [MTGJSON.com](https://mtgjson.com/).
+
+This system was built using *Python 3.7*, so we can only guarantee proper functionality with this version.
 
 
-### How We Did It
 
-For the database we have hosted on GitHub, we began with downloading and parsing card data from [MTGJSON](https://mtgjson.com), a highly reputable source for Magic: The Gathering card and set information, through their `AllSets-x.json` file.
+```sh
+# Install dependencies
+$ pip3 install -r requirements.txt 
 
-Once we have completed this import, a repo manager can go in and manually edit imperfections in the data, as sometimes MTGJSON's data is directly based on Gatherer, which in itself usually has a few mistakes.
+# usage: mtgsqlive [-h] -i file -o file 
+$ python3 -m mtgsqlive -i /path/to/AllSets.json -o /path/to/output.sqlite
 
-When "spoiler season" (a few times a year when Wizards of the Coast spoils new cards from an upcoming set) begins, a repo manager can manually update the database (with a tool to be developed later). With the past card data already in the database and spoiled cards input manually, this database will always be up to date, far ahead of the update schedule of Gatherer and MTGJSON. 
-
-Projects can pull in our complete database for their projects in order to have a full Magic: the Gathering card database at all times. There is a special table, `lastUpdated`, which contains all of the times that the database was updated, either manually or via an import from MTGJSON (once the set officially is released on Gatherer).
-
-### How To Operate
-
-If you would like to use our pre-compiled database for your project, simply download the database, which you can find on the official releases of this project, and either see when the release was published or read the `lastUpdated` table to know when the database was last updated. If you would rather create your own database, we have included the tools to do such.
-
-To turn your AllSets JSON file into a SQLite database, run the following command: <br> <kbd>./json_to_sql.py create_new_db db_location json_file_location</kbd>
-
-Where:
-* `create_new_db` is "0" (do not create a new database) or "1" (create a new database)
-* `db_location` is location where the database is stored OR where you want to store the newly created database
-* `json_file_location` is the location of the JSON file you want to import to your database
-
-If your project is already dependent on a JSON format, such as if you pull in the data from MTGJSON and parse it internally, you can create a JSON file from our database with our conversion tool!
-
-To turn a SQLite database file into a JSON file, run the following command: <br> <kbd>./sql_to_json.py db_location output_file_location sets_or_cards</kbd>
-
-Where:
-* `db_location` is the location where the database is stored
-* `output_file_location` is where you want to store the newly created JSON output file
-* `sets_or_cards` is "sets" ("AllSets-x.json" will be generated) or "cards" ("AllCards-x.json" will be generated)
-
-### Confirmation Testing
-If you would like to make sure the input file is the same as the output file, making sure no data is lost in conversion, you can run the `testing_mac.sh` command. *NOTE:* this program will only work on unix-style machines.
+```  

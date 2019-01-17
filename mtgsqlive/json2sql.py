@@ -8,8 +8,6 @@ import pathlib
 import sqlite3
 from typing import Any, Dict, List, Union
 
-import mtgsqlive
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -378,6 +376,3 @@ def sql_dict_insert(
     sql_connection.commit()
 
 
-if __name__ == "__main__":
-    mtgsqlive.init_logger()
-    main()
