@@ -10,7 +10,11 @@ def id(x):
 
 
 def dict_from_row(row):
-    return {k: ga_decoders.get(k, json.loads)(v) for k, v in zip(row.keys(), row) if v is not None}
+    return {
+        k: ga_decoders.get(k, json.loads)(v)
+        for k, v in zip(row.keys(), row)
+        if v is not None
+    }
 
 
 def remove_set_info(dictionary):
@@ -56,7 +60,9 @@ def db_to_json_all_sets(database_connection):
     for ls_set_code in las_rows:
         la_return_data = []
         ls_set_code = set_dictionary(ls_set_code)
-        cursor.execute("SELECT * FROM cards WHERE setCode = ?", [ls_set_code["setCode"]])
+        cursor.execute(
+            "SELECT * FROM cards WHERE setCode = ?", [ls_set_code["setCode"]]
+        )
         card_rows = cursor.fetchall()
 
         ls_set_name = None
@@ -75,7 +81,11 @@ def db_to_json_all_sets(database_connection):
 
         # Inset into dictionary the JSON data
         la_main_dict[ls_set_code["setCode"]] = dict(
-            zip(["cards", "name", "releaseDate"], [la_return_data, ls_set_name, ls_set_release_date]))
+            zip(
+                ["cards", "name", "releaseDate"],
+                [la_return_data, ls_set_name, ls_set_release_date],
+            )
+        )
 
     database_connection.close()
     return la_main_dict
@@ -102,10 +112,15 @@ def db_to_json_all_cards(database_connection):
 
 def main():
     if len(sys.argv) != 4:
-        print("USAGE: %s <database input path> <json output path> <'sets' or 'cards'>" % sys.argv[0])
+        print(
+            "USAGE: %s <database input path> <json output path> <'sets' or 'cards'>"
+            % sys.argv[0]
+        )
         exit(1)
 
-    ls_db_path = sqlite3.connect(os.path.expanduser(sys.argv[1]))  # File location for database
+    ls_db_path = sqlite3.connect(
+        os.path.expanduser(sys.argv[1])
+    )  # File location for database
     ls_json_path = os.path.expanduser(sys.argv[2])  # File location for output
     lb_is_sets = sys.argv[3] == "sets"  # Are we doing sets or cards
 
@@ -114,10 +129,10 @@ def main():
     else:
         dictionary = db_to_json_all_cards(ls_db_path)
 
-    with open(ls_json_path, 'w') as json_f:
+    with open(ls_json_path, "w") as json_f:
         json.dump(dictionary, json_f, sort_keys=True, indent=4)
 
 
-if __name__ == '__main__':
-    ga_decoders = {'setName': id, 'setCode': id, 'setReleaseDate': id}
+if __name__ == "__main__":
+    ga_decoders = {"setName": id, "setCode": id, "setReleaseDate": id}
     main()
