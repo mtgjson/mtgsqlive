@@ -8,7 +8,7 @@ setuptools.setup(
     version=0.1,
     author="Zach Halpern",
     author_email="Zahalpern+github@gmail.com",
-    url=setuptools.depends.get_module_constant("mtgjson4", "__REPO_URL__"),
+    url="https://github.com/mtgjson/mtgsqlive/",
     description="Convert MTGJSONv4 files to SQLite format for Magic: The Gathering",
     long_description=open("README.md", "r").read(),
     long_description_content_type="text/markdown",

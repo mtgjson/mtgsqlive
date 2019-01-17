@@ -161,6 +161,31 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
         ")"
     )
 
+    # Build tokens table
+    cursor.execute(
+        "CREATE TABLE `tokens` ("
+        "artist TEXT,"
+        "borderColor TEXT,"
+        "colorIdentity TEXT,"
+        "colorIndicator TEXT,"
+        "colors TEXT,"
+        "isOnlineOnly INTEGER NOT NULL DEFAULT 0,"
+        "loyalty TEXT,"
+        "name TEXT,"
+        "number TEXT,"
+        "power TEXT,"
+        "reverseRelated TEXT,"
+        "scryfallId TEXT,"
+        "setCode TEXT,"
+        "side TEXT,"
+        "text TEXT,"
+        "toughness TEXT,"
+        "type TEXT,"
+        "uuid TEXT,"
+        "watermark TEXT"
+        ")"
+    )
+
     # Execute the commands
     sql_connection.commit()
 
@@ -187,6 +212,11 @@ def parse_and_import_cards(
             LOGGER.debug("Inserting card row for {}".format(card.get("name")))
             card_attr: Dict[str, Any] = handle_card_row_insertion(card, set_code)
             sql_insert_all_card_fields(card_attr, sql_connection)
+
+        for token in set_data.get("tokens"):
+            LOGGER.debug("Inserting token row for {}".format(token.get("name")))
+            token_attr = handle_token_row_insertion(token, set_code)
+            sql_dict_insert(token_attr, "tokens", sql_connection)
 
 
 def sql_insert_all_card_fields(
@@ -300,6 +330,23 @@ def handle_ruling_rows(
             }
         )
     return rulings
+
+
+def handle_token_row_insertion(
+    token_data: Dict[str, Any], set_name: str
+) -> Dict[str, Any]:
+    """
+    This method will take the token data and convert it, preparing
+    for SQLite insertion
+    :param token_data: Data to process
+    :param set_name: Set name, as it's a card element
+    :return: Dictionary ready for insertion
+    """
+    token_insert_values: Dict[str, Any] = {"setCode": set_name}
+    for key, value in token_data.items():
+        token_insert_values[key] = modify_for_sql_insert(value)
+
+    return token_insert_values
 
 
 def handle_card_row_insertion(
