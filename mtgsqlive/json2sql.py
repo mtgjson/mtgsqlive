@@ -32,7 +32,7 @@ def main() -> None:
         exit(1)
 
     # Build the SQLite database
-    sql_connection = sqlite3.connect(output_file, isolation_level=None)
+    sql_connection = sqlite3.connect(output_file)
     sql_connection.execute("pragma journal_mode=wal;")
 
     build_sql_schema(sql_connection)
@@ -217,6 +217,8 @@ def parse_and_import_cards(
             LOGGER.debug("Inserting token row for {}".format(token.get("name")))
             token_attr = handle_token_row_insertion(token, set_code)
             sql_dict_insert(token_attr, "tokens", sql_connection)
+
+    sql_connection.commit()
 
 
 def sql_insert_all_card_fields(
@@ -423,4 +425,3 @@ def sql_dict_insert(
     placeholders = ":" + ", :".join(data.keys())
     query = "INSERT INTO " + table + " (%s) VALUES (%s)" % (columns, placeholders)
     cursor.execute(query, data)
-    sql_connection.commit()
