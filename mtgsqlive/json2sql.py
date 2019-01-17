@@ -31,8 +31,10 @@ def main() -> None:
     if not validate_io_streams(input_file, output_file):
         exit(1)
 
-    # Build the SQLite file
-    sql_connection = sqlite3.connect(output_file)
+    # Build the SQLite database
+    sql_connection = sqlite3.connect(output_file, isolation_level=None)
+    sql_connection.execute('pragma journal_mode=wal;')
+
     build_sql_schema(sql_connection)
     parse_and_import_cards(input_file, sql_connection)
 
@@ -289,8 +291,7 @@ def handle_ruling_rows(
     """
     rulings = []
     for rule in card_data["rulings"]:
-        for date, text in rule.items():
-            rulings.append({"uuid": card_uuid, "date": date, "text": text})
+        rulings.append({"uuid": card_uuid, "date": rule.get("date", ""), "text": rule.get("text", "")})
     return rulings
 
 
