@@ -155,7 +155,7 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
         "toughness TEXT,"
         "type TEXT,"
         "types TEXT,"
-        "uuid TEXT PRIMARY KEY,"
+        "uuid TEXT(36) PRIMARY KEY,"
         "variations TEXT,"
         "watermark TEXT"
         ")"
