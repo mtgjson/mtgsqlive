@@ -245,6 +245,11 @@ def parse_and_import_cards(
             token_attr = handle_token_row_insertion(token, set_code)
             sql_dict_insert(token_attr, "tokens", sql_connection)
 
+        for language, translation in set_data["translations"].items():
+            LOGGER.debug("Inserting set_translation row for {}".format(language))
+            set_translation_attr = handle_set_translation_row_insertion(language, translation, set_code)
+            sql_dict_insert(set_translation_attr, "set_translations", sql_connection)
+
     sql_connection.commit()
 
 
@@ -359,6 +364,28 @@ def handle_ruling_rows(
             }
         )
     return rulings
+
+
+def handle_set_translation_row_insertion(
+    language: str,
+    translation: str,
+    set_name: str
+) -> Dict[str, Any]:
+    """
+    This method will take the set translation data and convert it, preparing
+    for SQLite insertion
+    :param language: The language of the set translation
+    :param translation: The set name translated in to the given language
+    :param set_name: Set name, as it's a card element
+    :return: Dictionary ready for insertion
+    """
+    set_translation_insert_values: Dict[str, Any] = {
+        "language": language,
+        "translation": translation,
+        "setCode": set_name
+    }
+
+    return set_translation_insert_values
 
 
 def handle_token_row_insertion(
