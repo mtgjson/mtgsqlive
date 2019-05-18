@@ -226,7 +226,7 @@ def parse_and_import_cards(
     :param sql_connection: Database connection
     """
     LOGGER.info("Loading JSON into memory")
-    json_data = json.load(input_file.open("r"))
+    json_data = json.load(input_file.open("r", encoding="utf8"))
 
     LOGGER.info("Building sets")
     for set_code, set_data in json_data.items():
