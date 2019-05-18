@@ -22,7 +22,7 @@ def init_logger() -> None:
             logging.FileHandler(
                 str(
                     LOG_DIR.joinpath(
-                        "mtgsqlive_" + str(time.strftime("%Y-%m-%d_%H:%M:%S")) + ".log"
+                        "mtgsqlive_" + str(time.strftime("%Y-%m-%d_%H-%M-%S")) + ".log"
                     )
                 )
             ),
