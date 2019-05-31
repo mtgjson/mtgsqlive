@@ -74,6 +74,7 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
         "boosterV3 TEXT,"
         "code TEXT,"
         "codeV3 TEXT,"
+        "isForeignOnly INTEGER NOT NULL DEFAULT 0,"
         "isFoilOnly INTEGER NOT NULL DEFAULT 0,"
         "isOnlineOnly INTEGER NOT NULL DEFAULT 0,"
         "keyruneCode TEXT,"
