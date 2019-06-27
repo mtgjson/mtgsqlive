@@ -32,7 +32,7 @@ def main() -> None:
         exit(1)
 
     # Build the SQLite database
-    sql_connection = sqlite3.connect(output_file)
+    sql_connection = sqlite3.connect(str(output_file))
     sql_connection.execute("pragma journal_mode=wal;")
 
     build_sql_schema(sql_connection)
@@ -139,11 +139,19 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
         "hasFoil INTEGER NOT NULL DEFAULT 0,"
         "hasNonFoil INTEGER NOT NULL DEFAULT 0,"
         "isAlternative INTEGER NOT NULL DEFAULT 0,"
+        "isArena INTEGER NOT NULL DEFAULT 0,"
+        "isFullArt INTEGER NOT NULL DEFAULT 0,"
         "isOnlineOnly INTEGER NOT NULL DEFAULT 0,"
         "isOversized INTEGER NOT NULL DEFAULT 0,"
+        "isMtgo INTEGER NOT NULL DEFAULT 0,"
+        "isPaper INTEGER NOT NULL DEFAULT 0,"
+        "isPromo INTEGER NOT NULL DEFAULT 0,"
+        "isReprint INTEGER NOT NULL DEFAULT 0,"
         "isReserved INTEGER NOT NULL DEFAULT 0,"
         "isStarter INTEGER NOT NULL DEFAULT 0,"
+        "isStorySpotlight INTEGER NOT NULL DEFAULT 0,"
         "isTimeshifted INTEGER NOT NULL DEFAULT 0,"
+        "isTextless INTEGER NOT NULL DEFAULT 0,"
         "layout TEXT,"
         "life TEXT,"
         "loyalty TEXT,"
