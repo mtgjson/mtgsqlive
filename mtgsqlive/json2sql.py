@@ -32,7 +32,7 @@ def main() -> None:
         exit(1)
 
     # Build the SQLite database
-    sql_connection = sqlite3.connect(output_file)
+    sql_connection = sqlite3.connect(str(output_file))
     sql_connection.execute("pragma journal_mode=wal;")
 
     build_sql_schema(sql_connection)
