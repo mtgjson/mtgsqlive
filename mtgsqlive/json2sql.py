@@ -77,6 +77,7 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
         "isForeignOnly INTEGER NOT NULL DEFAULT 0,"
         "isFoilOnly INTEGER NOT NULL DEFAULT 0,"
         "isOnlineOnly INTEGER NOT NULL DEFAULT 0,"
+        "isPartialPreview INTEGER NOT NULL DEFAULT 0,"
         "keyruneCode TEXT,"
         "mcmName TEXT,"
         "mcmId INTEGER,"
