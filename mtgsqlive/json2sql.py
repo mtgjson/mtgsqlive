@@ -544,7 +544,7 @@ def modify_for_sql_insert(data: Any) -> Union[str, int, float]:
         return ", ".join(data)
 
     if isinstance(data, bool):
-        return int(data == True)
+        return int(data)
 
     if isinstance(data, dict):
         return str(data)
