@@ -46,6 +46,7 @@ def validate_io_streams(input_file: pathlib.Path, output_file: pathlib.Path) -> 
     :return: Good to continue status
     """
     if input_file.is_file():
+        # check file extension here
         LOGGER.info("Building using AllSets.json master file.")
     else:
         if input_file.is_dir():
@@ -58,6 +59,8 @@ def validate_io_streams(input_file: pathlib.Path, output_file: pathlib.Path) -> 
     if output_file.is_file():
         LOGGER.warning("Output file {} exists already, moving it.".format(output_file))
         output_file.replace(output_file.parent.joinpath(output_file.name + ".old"))
+        ## Need "import time" for this:
+        #output_file.replace(output_file.parent.joinpath(output_file.stem + "_" + str(time.strftime("%Y-%m-%d_%H-%M-%S")) + output_file.suffix))
 
     return True
 
@@ -287,7 +290,7 @@ def parse_and_import_cards(
                 sql_dict_insert(set_translation_attr, "set_translations", sql_connection)
     elif input_file.is_dir():
         for setFile in input_file.glob("*.json"):
-            LOGGER.info("Loading {} into memory...".format(setFile))
+            LOGGER.info("Loading {} into memory...".format(setFile.name))
             set_data = json.load(setFile.open("r", encoding="utf8"))
             set_code = setFile.stem
             LOGGER.info("Building set: {}".format(set_code))
@@ -544,7 +547,7 @@ def modify_for_sql_insert(data: Any) -> Union[str, int, float]:
         return ", ".join(data)
 
     if isinstance(data, bool):
-        return int(data)
+        return int(data == True)
 
     if isinstance(data, dict):
         return str(data)
