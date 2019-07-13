@@ -48,18 +48,17 @@ def validate_io_streams(input_file: pathlib.Path, output_file: pathlib.Path) -> 
     if input_file.is_file():
         # check file extension here
         LOGGER.info("Building using AllSets.json master file.")
+    elif input_file.is_dir():
+        LOGGER.info("Building using AllSetFiles directory.")  
     else:
-        if input_file.is_dir():
-            LOGGER.info("Building using AllSetFiles directory.")  
-        else:
-            LOGGER.fatal("Invalid input file/directory. ({})".format(input_file))
-            return False
+        LOGGER.fatal("Invalid input file/directory. ({})".format(input_file))
+        return False
 
     output_file.parent.mkdir(exist_ok=True)
     if output_file.is_file():
         LOGGER.warning("Output file {} exists already, moving it.".format(output_file))
         output_file.replace(output_file.parent.joinpath(output_file.name + ".old"))
-        ## Need "import time" for this:
+        ## Need to import time for this:
         #output_file.replace(output_file.parent.joinpath(output_file.stem + "_" + str(time.strftime("%Y-%m-%d_%H-%M-%S")) + output_file.suffix))
 
     return True
@@ -196,7 +195,6 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
         "originalText TEXT,"
         "originalType TEXT,"
         "printings TEXT,"
-        "prices TEXT,"
         "power TEXT,"
         "purchaseUrls TEXT,"
         "rarity TEXT,"
@@ -401,13 +399,9 @@ def handle_legal_rows(
     """
     legalities = []
     for card_format, format_status in card_data["legalities"].items():
-        # I use an assumed "legal" system to save some space/queries, only insert rows with non-legal status
-        # If a query returns no results you can assume its legal in the format queried.
-        # "Innocent Until Proven Guilty" :D
-        if (format_status != "legal"):
-            legalities.append(
-                {"uuid": card_uuid, "format": card_format, "status": format_status}
-            )
+        legalities.append(
+            {"uuid": card_uuid, "format": card_format, "status": format_status}
+        )
 
     return legalities
 
@@ -547,7 +541,7 @@ def modify_for_sql_insert(data: Any) -> Union[str, int, float]:
         return ", ".join(data)
 
     if isinstance(data, bool):
-        return int(data == True)
+        return int(data)
 
     if isinstance(data, dict):
         return str(data)
