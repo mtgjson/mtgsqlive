@@ -10,17 +10,16 @@ from typing import Any, Dict, List, Union
 
 LOGGER = logging.getLogger(__name__)
 
-
 def main() -> None:
     """
     Main function
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-i", help="input file (AllSets.json)", required=True, metavar="file"
+        "-i", help="input source (\"AllSets.json\" file or \"AllSetFiles\" directory)", required=True, metavar="fileIn"
     )
     parser.add_argument(
-        "-o", help="output file (*.sqlite)", required=True, metavar="file"
+        "-o", help="output file (*.sqlite, *.db, *.sqlite3, *.db3)", required=True, metavar="fileOut"
     )
     args = parser.parse_args()
 
@@ -46,14 +45,21 @@ def validate_io_streams(input_file: pathlib.Path, output_file: pathlib.Path) -> 
     :param output_file: Output file (SQLite)
     :return: Good to continue status
     """
-    if not input_file.is_file():
-        LOGGER.fatal("Input file {} does not exist.".format(input_file))
+    if input_file.is_file():
+        # check file extension here
+        LOGGER.info("Building using AllSets.json master file.")
+    elif input_file.is_dir():
+        LOGGER.info("Building using AllSetFiles directory.")  
+    else:
+        LOGGER.fatal("Invalid input file/directory. ({})".format(input_file))
         return False
 
     output_file.parent.mkdir(exist_ok=True)
     if output_file.is_file():
         LOGGER.warning("Output file {} exists already, moving it.".format(output_file))
         output_file.replace(output_file.parent.joinpath(output_file.name + ".old"))
+        ## Need to import time for this:
+        #output_file.replace(output_file.parent.joinpath(output_file.stem + "_" + str(time.strftime("%Y-%m-%d_%H-%M-%S")) + output_file.suffix))
 
     return True
 
@@ -116,11 +122,32 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
 
     # Build legalities table
     cursor.execute(
-        "CREATE TABLE `legalities` (" "uuid TEXT," "format TEXT," "status TEXT" ")"
+        "CREATE TABLE `legalities` ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "uuid TEXT,"
+        "format TEXT,"
+        "status TEXT" 
+        ")"
     )
 
     # Build ruling table
-    cursor.execute("CREATE TABLE `rulings` (" "uuid TEXT," "date TEXT," "text TEXT" ")")
+    cursor.execute("CREATE TABLE `rulings` ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "uuid TEXT," 
+        "date TEXT," 
+        "text TEXT" 
+        ")"
+    )
+
+    # Build prices table
+    cursor.execute("CREATE TABLE `prices` ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "uuid INTEGER,"
+        "type TEXT,"
+        "price REAL,"
+        "date TEXT"
+        ")"
+    )
 
     # Build cards table
     cursor.execute(
@@ -168,7 +195,6 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
         "originalText TEXT,"
         "originalType TEXT,"
         "printings TEXT,"
-        "prices TEXT,"
         "power TEXT,"
         "purchaseUrls TEXT,"
         "rarity TEXT,"
@@ -235,31 +261,54 @@ def parse_and_import_cards(
     :param input_file: AllSets.json file
     :param sql_connection: Database connection
     """
-    LOGGER.info("Loading JSON into memory")
-    json_data = json.load(input_file.open("r", encoding="utf8"))
+    if input_file.is_file():
+        LOGGER.info("Loading JSON into memory")
+        json_data = json.load(input_file.open("r", encoding="utf8"))
 
-    LOGGER.info("Building sets")
-    for set_code, set_data in json_data.items():
-        # Handle set insertion
-        LOGGER.info("Inserting set row for {}".format(set_code))
-        set_insert_values = handle_set_row_insertion(set_data)
-        sql_dict_insert(set_insert_values, "sets", sql_connection)
+        LOGGER.info("Building sets")
+        for set_code, set_data in json_data.items():
+            # Handle set insertion
+            LOGGER.info("Inserting set row for {}".format(set_code))
+            set_insert_values = handle_set_row_insertion(set_data)
+            sql_dict_insert(set_insert_values, "sets", sql_connection)
 
-        for card in set_data.get("cards"):
-            LOGGER.debug("Inserting card row for {}".format(card.get("name")))
-            card_attr: Dict[str, Any] = handle_card_row_insertion(card, set_code)
-            sql_insert_all_card_fields(card_attr, sql_connection)
+            for card in set_data.get("cards"):
+                LOGGER.debug("Inserting card row for {}".format(card.get("name")))
+                card_attr: Dict[str, Any] = handle_card_row_insertion(card, set_code)
+                sql_insert_all_card_fields(card_attr, sql_connection)
 
-        for token in set_data.get("tokens"):
-            LOGGER.debug("Inserting token row for {}".format(token.get("name")))
-            token_attr = handle_token_row_insertion(token, set_code)
-            sql_dict_insert(token_attr, "tokens", sql_connection)
+            for token in set_data.get("tokens"):
+                LOGGER.debug("Inserting token row for {}".format(token.get("name")))
+                token_attr = handle_token_row_insertion(token, set_code)
+                sql_dict_insert(token_attr, "tokens", sql_connection)
 
-        for language, translation in set_data["translations"].items():
-            LOGGER.debug("Inserting set_translation row for {}".format(language))
-            set_translation_attr = handle_set_translation_row_insertion(language, translation, set_code)
-            sql_dict_insert(set_translation_attr, "set_translations", sql_connection)
+            for language, translation in set_data["translations"].items():
+                LOGGER.debug("Inserting set_translation row for {}".format(language))
+                set_translation_attr = handle_set_translation_row_insertion(language, translation, set_code)
+                sql_dict_insert(set_translation_attr, "set_translations", sql_connection)
+    elif input_file.is_dir():
+        for setFile in input_file.glob("*.json"):
+            LOGGER.info("Loading {} into memory...".format(setFile.name))
+            set_data = json.load(setFile.open("r", encoding="utf8"))
+            set_code = setFile.stem
+            LOGGER.info("Building set: {}".format(set_code))
+            set_insert_values = handle_set_row_insertion(set_data)
+            sql_dict_insert(set_insert_values, "sets", sql_connection)
+            
+            for card in set_data.get("cards"):
+                LOGGER.debug("Inserting card row for {}".format(card.get("name")))
+                card_attr: Dict[str, Any] = handle_card_row_insertion(card, set_code)
+                sql_insert_all_card_fields(card_attr, sql_connection)
 
+            for token in set_data.get("tokens"):
+                LOGGER.debug("Inserting token row for {}".format(token.get("name")))
+                token_attr = handle_token_row_insertion(token, set_code)
+                sql_dict_insert(token_attr, "tokens", sql_connection)
+
+            for language, translation in set_data["translations"].items():
+                LOGGER.debug("Inserting set_translation row for {}".format(language))
+                set_translation_attr = handle_set_translation_row_insertion(language, translation, set_code)
+                sql_dict_insert(set_translation_attr, "set_translations", sql_connection)
     sql_connection.commit()
 
 
@@ -283,6 +332,9 @@ def sql_insert_all_card_fields(
     for rule_val in card_attributes["rulings"]:
         sql_dict_insert(rule_val, "rulings", sql_connection)
 
+    for price_val in card_attributes["prices"]:
+        sql_dict_insert(price_val, "prices", sql_connection)
+        
 
 def handle_set_row_insertion(set_data: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -353,7 +405,6 @@ def handle_legal_rows(
 
     return legalities
 
-
 def handle_ruling_rows(
     card_data: Dict[str, Any], card_uuid: str
 ) -> List[Dict[str, Any]]:
@@ -375,6 +426,24 @@ def handle_ruling_rows(
         )
     return rulings
 
+def handle_price_rows(
+    card_data: Dict[str, Any], card_uuid: str
+) -> List[Dict[str, Any]]:
+    """
+    This method will take the card data and convert it, preparing
+    for SQLite insertion
+    :param card_data: Data to process
+    :param card_uuid: UUID to be used as a key
+    :return: List of dicts, ready for insertion
+    """
+    prices = []
+    for type in card_data["prices"]:
+        for date, price in card_data["prices"][type].items():
+            prices.append(
+                {"uuid": card_uuid, "type": type, "price": price, "date": date}
+            )
+
+    return prices
 
 def handle_set_translation_row_insertion(
     language: str,
@@ -426,7 +495,7 @@ def handle_card_row_insertion(
     :return: Dictionary ready for insertion
     """
     # ORDERING MATTERS HERE
-    card_skip_keys = ["foreignData", "legalities", "rulings"]
+    card_skip_keys = ["foreignData", "legalities", "rulings", "prices"]
 
     card_insert_values: Dict[str, Any] = {"setCode": set_name}
     for key, value in card_data.items():
@@ -446,11 +515,16 @@ def handle_card_row_insertion(
     if card_skip_keys[2] in card_data.keys():
         ruling_insert_values = handle_ruling_rows(card_data, card_data["uuid"])
 
+    price_insert_values: List[Dict[str, Any]] = []
+    if card_skip_keys[3] in card_data.keys():
+        price_insert_values = handle_price_rows(card_data, card_data["uuid"])
+
     return {
         "cards": card_insert_values,
         "foreignData": foreign_insert_values,
         "legalities": legal_insert_values,
         "rulings": ruling_insert_values,
+        "prices": price_insert_values,
     }
 
 
@@ -467,7 +541,7 @@ def modify_for_sql_insert(data: Any) -> Union[str, int, float]:
         return ", ".join(data)
 
     if isinstance(data, bool):
-        return int(data == "True")
+        return int(data)
 
     if isinstance(data, dict):
         return str(data)
