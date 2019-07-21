@@ -10,16 +10,23 @@ from typing import Any, Dict, List, Union
 
 LOGGER = logging.getLogger(__name__)
 
+
 def main() -> None:
     """
     Main function
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-i", help="input source (\"AllSets.json\" file or \"AllSetFiles\" directory)", required=True, metavar="fileIn"
+        "-i",
+        help='input source ("AllSets.json" file or "AllSetFiles" directory)',
+        required=True,
+        metavar="fileIn",
     )
     parser.add_argument(
-        "-o", help="output file (*.sqlite, *.db, *.sqlite3, *.db3)", required=True, metavar="fileOut"
+        "-o",
+        help="output file (*.sqlite, *.db, *.sqlite3, *.db3)",
+        required=True,
+        metavar="fileOut",
     )
     args = parser.parse_args()
 
@@ -49,17 +56,15 @@ def validate_io_streams(input_file: pathlib.Path, output_file: pathlib.Path) -> 
         # check file extension here
         LOGGER.info("Building using AllSets.json master file.")
     elif input_file.is_dir():
-        LOGGER.info("Building using AllSetFiles directory.")  
+        LOGGER.info("Building using AllSetFiles directory.")
     else:
-        LOGGER.fatal("Invalid input file/directory. ({})".format(input_file))
+        LOGGER.fatal(f"Invalid input file/directory. ({input_file})")
         return False
 
     output_file.parent.mkdir(exist_ok=True)
     if output_file.is_file():
-        LOGGER.warning("Output file {} exists already, moving it.".format(output_file))
+        LOGGER.warning(f"Output file {output_file} exists already, moving it.")
         output_file.replace(output_file.parent.joinpath(output_file.name + ".old"))
-        ## Need to import time for this:
-        #output_file.replace(output_file.parent.joinpath(output_file.stem + "_" + str(time.strftime("%Y-%m-%d_%H-%M-%S")) + output_file.suffix))
 
     return True
 
@@ -75,18 +80,19 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
     # Build Set table
     cursor.execute(
         "CREATE TABLE `sets` ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
         "baseSetSize INTEGER,"
         "block TEXT,"
         "boosterV3 TEXT,"
         "code TEXT,"
         "codeV3 TEXT,"
-        "isForeignOnly INTEGER NOT NULL DEFAULT 0,"
-        "isFoilOnly INTEGER NOT NULL DEFAULT 0,"
-        "isOnlineOnly INTEGER NOT NULL DEFAULT 0,"
-        "isPartialPreview INTEGER NOT NULL DEFAULT 0,"
+        "isFoilOnly INTEGER NOT NULL DEFAULT 0,"  # boolean
+        "isForeignOnly INTEGER NOT NULL DEFAULT 0,"  # boolean
+        "isOnlineOnly INTEGER NOT NULL DEFAULT 0,"  # boolean
+        "isPartialPreview INTEGER NOT NULL DEFAULT 0,"  # boolean
         "keyruneCode TEXT,"
-        "mcmName TEXT,"
         "mcmId INTEGER,"
+        "mcmName TEXT,"
         "meta TEXT,"
         "mtgoCode TEXT,"
         "name TEXT,"
@@ -101,22 +107,24 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
     # Translations for set names
     cursor.execute(
         "CREATE TABLE `set_translations` ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
         "language TEXT,"
-        "translation TEXT,"
-        "setCode TEXT"
+        "setCode TEXT,"
+        "translation TEXT"
         ")"
     )
 
     # Build foreignData table
     cursor.execute(
         "CREATE TABLE `foreignData` ("
-        "uuid TEXT,"
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
         "flavorText TEXT,"
         "language TEXT,"
         "multiverseId INTEGER,"
         "name TEXT,"
         "text TEXT,"
-        "type TEXT"
+        "type TEXT,"
+        "uuid TEXT(36)"
         ")"
     )
 
@@ -124,34 +132,37 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
     cursor.execute(
         "CREATE TABLE `legalities` ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "uuid TEXT,"
         "format TEXT,"
-        "status TEXT" 
+        "status TEXT,"
+        "uuid TEXT(36)"
         ")"
     )
 
     # Build ruling table
-    cursor.execute("CREATE TABLE `rulings` ("
+    cursor.execute(
+        "CREATE TABLE `rulings` ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "uuid TEXT," 
-        "date TEXT," 
-        "text TEXT" 
+        "date TEXT,"
+        "text TEXT,"
+        "uuid TEXT(36)"
         ")"
     )
 
     # Build prices table
-    cursor.execute("CREATE TABLE `prices` ("
+    cursor.execute(
+        "CREATE TABLE `prices` ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "uuid INTEGER,"
-        "type TEXT,"
+        "date TEXT,"
         "price REAL,"
-        "date TEXT"
+        "type TEXT,"
+        "uuid TEXT(36)"
         ")"
     )
 
     # Build cards table
     cursor.execute(
         "CREATE TABLE `cards` ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
         "artist TEXT,"
         "borderColor TEXT,"
         "colorIdentity TEXT,"
@@ -164,46 +175,46 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
         "frameEffect TEXT,"
         "frameVersion TEXT,"
         "hand TEXT,"
-        "hasFoil INTEGER NOT NULL DEFAULT 0,"
-        "hasNonFoil INTEGER NOT NULL DEFAULT 0,"
-        "isAlternative INTEGER NOT NULL DEFAULT 0,"
-        "isArena INTEGER NOT NULL DEFAULT 0,"
-        "isFullArt INTEGER NOT NULL DEFAULT 0,"
-        "isOnlineOnly INTEGER NOT NULL DEFAULT 0,"
-        "isOversized INTEGER NOT NULL DEFAULT 0,"
-        "isMtgo INTEGER NOT NULL DEFAULT 0,"
-        "isPaper INTEGER NOT NULL DEFAULT 0,"
-        "isPromo INTEGER NOT NULL DEFAULT 0,"
-        "isReprint INTEGER NOT NULL DEFAULT 0,"
-        "isReserved INTEGER NOT NULL DEFAULT 0,"
-        "isStarter INTEGER NOT NULL DEFAULT 0,"
-        "isStorySpotlight INTEGER NOT NULL DEFAULT 0,"
-        "isTimeshifted INTEGER NOT NULL DEFAULT 0,"
-        "isTextless INTEGER NOT NULL DEFAULT 0,"
+        "hasFoil INTEGER NOT NULL DEFAULT 0,"  # boolean
+        "hasNonFoil INTEGER NOT NULL DEFAULT 0,"  # boolean
+        "isAlternative INTEGER NOT NULL DEFAULT 0,"  # boolean
+        "isArena INTEGER NOT NULL DEFAULT 0,"  # boolean
+        "isFullArt INTEGER NOT NULL DEFAULT 0,"  # boolean
+        "isMtgo INTEGER NOT NULL DEFAULT 0,"  # boolean
+        "isOnlineOnly INTEGER NOT NULL DEFAULT 0,"  # boolean
+        "isOversized INTEGER NOT NULL DEFAULT 0,"  # boolean
+        "isPaper INTEGER NOT NULL DEFAULT 0,"  # boolean
+        "isPromo INTEGER NOT NULL DEFAULT 0,"  # boolean
+        "isReprint INTEGER NOT NULL DEFAULT 0,"  # boolean
+        "isReserved INTEGER NOT NULL DEFAULT 0,"  # boolean
+        "isStarter INTEGER NOT NULL DEFAULT 0,"  # boolean
+        "isStorySpotlight INTEGER NOT NULL DEFAULT 0,"  # boolean
+        "isTextless INTEGER NOT NULL DEFAULT 0,"  # boolean
+        "isTimeshifted INTEGER NOT NULL DEFAULT 0,"  # boolean
         "layout TEXT,"
         "life TEXT,"
         "loyalty TEXT,"
         "manaCost TEXT,"
-        "mcmName TEXT DEFAULT NULL,"
-        "mcmId INTEGER DEFAULT 0,"
-        "mcmMetaId INTEGER DEFAULT 0,"
-        "mtgArenaId INTEGER NOT NULL DEFAULT 0,"
-        "mtgoFoilId INTEGER NOT NULL DEFAULT 0,"
-        "mtgoId INTEGER NOT NULL DEFAULT 0,"
-        "mtgstocksId INTEGER DEFAULT 0,"
+        "mcmId INTEGER,"
+        "mcmMetaId INTEGER,"
+        "mcmName TEXT,"
+        "mtgArenaId INTEGER,"
+        "mtgoFoilId INTEGER,"
+        "mtgoId INTEGER,"
+        "mtgstocksId INTEGER,"
         "multiverseId INTEGER,"
         "name TEXT,"
         "names TEXT,"
         "number TEXT,"
         "originalText TEXT,"
         "originalType TEXT,"
-        "printings TEXT,"
         "power TEXT,"
+        "printings TEXT,"
         "purchaseUrls TEXT,"
         "rarity TEXT,"
         "scryfallId TEXT,"
-        "scryfallOracleId TEXT,"
         "scryfallIllustrationId TEXT,"
+        "scryfallOracleId TEXT,"
         "setCode TEXT,"
         "side TEXT,"
         "subtypes TEXT,"
@@ -214,8 +225,7 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
         "toughness TEXT,"
         "type TEXT,"
         "types TEXT,"
-        "uuid TEXT(36) PRIMARY KEY,"
-        "uuidV421 TEXT,"
+        "uuid TEXT(36),"
         "variations TEXT,"
         "watermark TEXT"
         ")"
@@ -224,13 +234,14 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
     # Build tokens table
     cursor.execute(
         "CREATE TABLE `tokens` ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
         "artist TEXT,"
         "borderColor TEXT,"
         "colorIdentity TEXT,"
         "colorIndicator TEXT,"
         "colors TEXT,"
         "duelDeck TEXT,"
-        "isOnlineOnly INTEGER NOT NULL DEFAULT 0,"
+        "isOnlineOnly INTEGER NOT NULL DEFAULT 0,"  # boolean
         "layout TEXT,"
         "loyalty TEXT,"
         "name TEXT,"
@@ -239,15 +250,14 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
         "power TEXT,"
         "reverseRelated TEXT,"
         "scryfallId TEXT,"
-        "scryfallOracleId TEXT,"
         "scryfallIllustrationId TEXT,"
+        "scryfallOracleId TEXT,"
         "setCode TEXT,"
         "side TEXT,"
         "text TEXT,"
         "toughness TEXT,"
         "type TEXT,"
-        "uuid TEXT,"
-        "uuidV421 TEXT,"
+        "uuid TEXT(36),"
         "watermark TEXT"
         ")"
     )
@@ -287,8 +297,12 @@ def parse_and_import_cards(
 
             for language, translation in set_data["translations"].items():
                 LOGGER.debug("Inserting set_translation row for {}".format(language))
-                set_translation_attr = handle_set_translation_row_insertion(language, translation, set_code)
-                sql_dict_insert(set_translation_attr, "set_translations", sql_connection)
+                set_translation_attr = handle_set_translation_row_insertion(
+                    language, translation, set_code
+                )
+                sql_dict_insert(
+                    set_translation_attr, "set_translations", sql_connection
+                )
     elif input_file.is_dir():
         for setFile in input_file.glob("*.json"):
             LOGGER.info("Loading {} into memory...".format(setFile.name))
@@ -297,7 +311,7 @@ def parse_and_import_cards(
             LOGGER.info("Building set: {}".format(set_code))
             set_insert_values = handle_set_row_insertion(set_data)
             sql_dict_insert(set_insert_values, "sets", sql_connection)
-            
+
             for card in set_data.get("cards"):
                 LOGGER.debug("Inserting card row for {}".format(card.get("name")))
                 card_attr: Dict[str, Any] = handle_card_row_insertion(card, set_code)
@@ -310,8 +324,12 @@ def parse_and_import_cards(
 
             for language, translation in set_data["translations"].items():
                 LOGGER.debug("Inserting set_translation row for {}".format(language))
-                set_translation_attr = handle_set_translation_row_insertion(language, translation, set_code)
-                sql_dict_insert(set_translation_attr, "set_translations", sql_connection)
+                set_translation_attr = handle_set_translation_row_insertion(
+                    language, translation, set_code
+                )
+                sql_dict_insert(
+                    set_translation_attr, "set_translations", sql_connection
+                )
     sql_connection.commit()
 
 
@@ -337,7 +355,7 @@ def sql_insert_all_card_fields(
 
     for price_val in card_attributes["prices"]:
         sql_dict_insert(price_val, "prices", sql_connection)
-        
+
 
 def handle_set_row_insertion(set_data: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -380,7 +398,7 @@ def handle_foreign_rows(
                 "uuid": card_uuid,
                 "flavorText": entry.get("flavorText", ""),
                 "language": entry.get("language", ""),
-                "multiverseId": entry.get("multiverseId", 0),
+                "multiverseId": entry.get("multiverseId", ""),
                 "name": entry.get("name", ""),
                 "text": entry.get("text", ""),
                 "type": entry.get("type", ""),
@@ -408,6 +426,7 @@ def handle_legal_rows(
 
     return legalities
 
+
 def handle_ruling_rows(
     card_data: Dict[str, Any], card_uuid: str
 ) -> List[Dict[str, Any]]:
@@ -429,6 +448,7 @@ def handle_ruling_rows(
         )
     return rulings
 
+
 def handle_price_rows(
     card_data: Dict[str, Any], card_uuid: str
 ) -> List[Dict[str, Any]]:
@@ -448,10 +468,9 @@ def handle_price_rows(
 
     return prices
 
+
 def handle_set_translation_row_insertion(
-    language: str,
-    translation: str,
-    set_name: str
+    language: str, translation: str, set_name: str
 ) -> Dict[str, Any]:
     """
     This method will take the set translation data and convert it, preparing
@@ -464,7 +483,7 @@ def handle_set_translation_row_insertion(
     set_translation_insert_values: Dict[str, Any] = {
         "language": language,
         "translation": translation,
-        "setCode": set_name
+        "setCode": set_name,
     }
 
     return set_translation_insert_values
@@ -540,6 +559,10 @@ def modify_for_sql_insert(data: Any) -> Union[str, int, float]:
     if isinstance(data, (str, int, float)):
         return data
 
+    # If the value is empty/null, mark it in SQL as such
+    if not data:
+        return None
+
     if isinstance(data, list) and data and isinstance(data[0], str):
         return ", ".join(data)
 
@@ -564,5 +587,5 @@ def sql_dict_insert(
     cursor = sql_connection.cursor()
     columns = ", ".join(data.keys())
     placeholders = ":" + ", :".join(data.keys())
-    query = "INSERT INTO " + table + " (%s) VALUES (%s)" % (columns, placeholders)
+    query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
     cursor.execute(query, data)
