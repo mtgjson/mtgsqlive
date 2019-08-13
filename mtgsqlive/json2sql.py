@@ -241,7 +241,7 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
         "colorIdentity TEXT,"
         "colorIndicator TEXT,"
         "colors TEXT,"
-        #"duelDeck TEXT,"
+        "duelDeck TEXT,"
         "isOnlineOnly INTEGER NOT NULL DEFAULT 0,"  # boolean
         "layout TEXT,"
         "loyalty TEXT,"
