@@ -76,7 +76,6 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
     """
     LOGGER.info("Building SQLite Schema")
     cursor = sql_connection.cursor()
-    #curosr.execute("PRAGMA foreign_keys = ON;") # might be necessary
 
     # Build Set table
     cursor.execute(
