@@ -176,7 +176,7 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
         "frameVersion TEXT,"
         "hand TEXT,"
         "hasFoil INTEGER NOT NULL DEFAULT 0,"  # boolean
-        "hasLeadershipSkills INTEGER NOT NULL DEFAULT 0,"  # boolean
+        "hasLeadershipSkills TEXT,"  # not a boolean! Also change to "leadershipSkills" after next build...
         "hasNoDeckLimit INTEGER NOT NULL DEFAULT 0,"  # boolean
         "hasNonFoil INTEGER NOT NULL DEFAULT 0,"  # boolean
         "isAlternative INTEGER NOT NULL DEFAULT 0,"  # boolean
