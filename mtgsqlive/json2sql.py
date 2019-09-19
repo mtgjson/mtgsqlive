@@ -299,7 +299,7 @@ def parse_and_import_cards(
                 token_attr = handle_token_row_insertion(token, set_code)
                 sql_dict_insert(token_attr, "tokens", sql_connection)
 
-            for language, translation in set_data["translations"].items():
+            for language, translation in set_data.get("translations", {}).items():
                 LOGGER.debug("Inserting set_translation row for {}".format(language))
                 set_translation_attr = handle_set_translation_row_insertion(
                     language, translation, set_code
@@ -326,7 +326,7 @@ def parse_and_import_cards(
                 token_attr = handle_token_row_insertion(token, set_code)
                 sql_dict_insert(token_attr, "tokens", sql_connection)
 
-            for language, translation in set_data["translations"].items():
+            for language, translation in set_data.get("translations", {}).items():
                 LOGGER.debug("Inserting set_translation row for {}".format(language))
                 set_translation_attr = handle_set_translation_row_insertion(
                     language, translation, set_code
@@ -335,7 +335,6 @@ def parse_and_import_cards(
                     set_translation_attr, "set_translations", sql_connection
                 )
     sql_connection.commit()
-
 
 def sql_insert_all_card_fields(
     card_attributes: Dict[str, Any], sql_connection: sqlite3.Connection
