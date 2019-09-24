@@ -84,7 +84,7 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
         "baseSetSize INTEGER,"
         "block TEXT,"
         "boosterV3 TEXT,"
-        "code TEXT,"
+        "code TEXT UNIQUE NOT NULL,"
         "codeV3 TEXT,"
         "isFoilOnly INTEGER NOT NULL DEFAULT 0,"  # boolean
         "isForeignOnly INTEGER NOT NULL DEFAULT 0,"  # boolean
@@ -104,61 +104,6 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
         ")"
     )
 
-    # Translations for set names
-    cursor.execute(
-        "CREATE TABLE `set_translations` ("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "language TEXT,"
-        "setCode TEXT,"
-        "translation TEXT"
-        ")"
-    )
-
-    # Build foreignData table
-    cursor.execute(
-        "CREATE TABLE `foreignData` ("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "flavorText TEXT,"
-        "language TEXT,"
-        "multiverseId INTEGER,"
-        "name TEXT,"
-        "text TEXT,"
-        "type TEXT,"
-        "uuid TEXT(36)"
-        ")"
-    )
-
-    # Build legalities table
-    cursor.execute(
-        "CREATE TABLE `legalities` ("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "format TEXT,"
-        "status TEXT,"
-        "uuid TEXT(36)"
-        ")"
-    )
-
-    # Build ruling table
-    cursor.execute(
-        "CREATE TABLE `rulings` ("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "date TEXT,"
-        "text TEXT,"
-        "uuid TEXT(36)"
-        ")"
-    )
-
-    # Build prices table
-    cursor.execute(
-        "CREATE TABLE `prices` ("
-        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
-        "date TEXT,"
-        "price REAL,"
-        "type TEXT,"
-        "uuid TEXT(36)"
-        ")"
-    )
-
     # Build cards table
     cursor.execute(
         "CREATE TABLE `cards` ("
@@ -169,7 +114,8 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
         "colorIndicator TEXT,"
         "colors TEXT,"
         "convertedManaCost FLOAT,"
-        "duelDeck TEXT,"
+        "duelDeck TEXT(1),"
+        "edhrecRank TEXT,"
         "faceConvertedManaCost FLOAT,"
         "flavorText TEXT,"
         "frameEffect TEXT,"
@@ -214,10 +160,10 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
         "printings TEXT,"
         "purchaseUrls TEXT,"
         "rarity TEXT,"
-        "scryfallId TEXT,"
-        "scryfallIllustrationId TEXT,"
-        "scryfallOracleId TEXT,"
-        "setCode TEXT,"
+        "scryfallId TEXT(36),"
+        "scryfallIllustrationId TEXT(36),"
+        "scryfallOracleId TEXT(36),"
+        "setCode TEXT REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE,"
         "side TEXT,"
         "subtypes TEXT,"
         "supertypes TEXT,"
@@ -227,10 +173,11 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
         "toughness TEXT,"
         "type TEXT,"
         "types TEXT,"
-        "uuid TEXT(36),"
+        "uuid TEXT(36) UNIQUE NOT NULL,"
         "variations TEXT,"
         "watermark TEXT"
         ")"
+        #"CREATE UNIQUE INDEX 'cards_uuid' ON cards(uuid);"
     )
 
     # Build tokens table
@@ -242,7 +189,7 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
         "colorIdentity TEXT,"
         "colorIndicator TEXT,"
         "colors TEXT,"
-        "duelDeck TEXT,"
+        "duelDeck TEXT(1),"
         "isOnlineOnly INTEGER NOT NULL DEFAULT 0,"  # boolean
         "layout TEXT,"
         "loyalty TEXT,"
@@ -251,16 +198,71 @@ def build_sql_schema(sql_connection: sqlite3.Connection) -> None:
         "number TEXT,"
         "power TEXT,"
         "reverseRelated TEXT,"
-        "scryfallId TEXT,"
-        "scryfallIllustrationId TEXT,"
-        "scryfallOracleId TEXT,"
-        "setCode TEXT,"
+        "scryfallId TEXT(36),"
+        "scryfallIllustrationId TEXT(36),"
+        "scryfallOracleId TEXT(36),"
+        "setCode TEXT REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE,"
         "side TEXT,"
         "text TEXT,"
         "toughness TEXT,"
         "type TEXT,"
-        "uuid TEXT(36),"
+        "uuid TEXT(36) UNIQUE,"
         "watermark TEXT"
+        ")"
+    )
+
+    # Translations for set names
+    cursor.execute(
+        "CREATE TABLE `set_translations` ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "language TEXT,"
+        "setCode TEXT REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE,"
+        "translation TEXT"
+        ")"
+    )
+
+    # Build foreignData table
+    cursor.execute(
+        "CREATE TABLE `foreignData` ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "flavorText TEXT,"
+        "language TEXT,"
+        "multiverseId INTEGER,"
+        "name TEXT,"
+        "text TEXT,"
+        "type TEXT,"
+        "uuid TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
+        ")"
+    )
+
+    # Build legalities table
+    cursor.execute(
+        "CREATE TABLE `legalities` ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "format TEXT,"
+        "status TEXT,"
+        "uuid TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
+        ")"
+    )
+
+    # Build ruling table
+    cursor.execute(
+        "CREATE TABLE `rulings` ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "date TEXT,"
+        "text TEXT,"
+        "uuid TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
+        ")"
+    )
+
+    # Build prices table
+    cursor.execute(
+        "CREATE TABLE `prices` ("
+        "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "date TEXT,"
+        "price REAL,"
+        "type TEXT,"
+        "uuid TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
         ")"
     )
 
@@ -297,7 +299,7 @@ def parse_and_import_cards(
                 token_attr = handle_token_row_insertion(token, set_code)
                 sql_dict_insert(token_attr, "tokens", sql_connection)
 
-            for language, translation in set_data["translations"].items():
+            for language, translation in set_data.get("translations", {}).items():
                 LOGGER.debug("Inserting set_translation row for {}".format(language))
                 set_translation_attr = handle_set_translation_row_insertion(
                     language, translation, set_code
@@ -324,7 +326,7 @@ def parse_and_import_cards(
                 token_attr = handle_token_row_insertion(token, set_code)
                 sql_dict_insert(token_attr, "tokens", sql_connection)
 
-            for language, translation in set_data["translations"].items():
+            for language, translation in set_data.get("translations", {}).items():
                 LOGGER.debug("Inserting set_translation row for {}".format(language))
                 set_translation_attr = handle_set_translation_row_insertion(
                     language, translation, set_code
@@ -333,7 +335,6 @@ def parse_and_import_cards(
                     set_translation_attr, "set_translations", sql_connection
                 )
     sql_connection.commit()
-
 
 def sql_insert_all_card_fields(
     card_attributes: Dict[str, Any], sql_connection: sqlite3.Connection
