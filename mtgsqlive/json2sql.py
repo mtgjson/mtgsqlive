@@ -494,10 +494,11 @@ def handle_price_rows(
     """
     prices = []
     for price_type in card_data["prices"]:
-        for date, price in card_data["prices"][price_type].items():
-            prices.append(
-                {"uuid": card_uuid, "type": price_type, "price": price, "date": date}
-            )
+        if(card_data["prices"][price_type] is not None):
+            for date, price in card_data["prices"][price_type].items():
+                prices.append(
+                    {"uuid": card_uuid, "type": price_type, "price": price, "date": date}
+                )
 
     return prices
 
