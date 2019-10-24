@@ -139,6 +139,7 @@ def build_sql_schema(output_file: Dict) -> None:
             "faceConvertedManaCost FLOAT,",
             "flavorText TEXT,",
             "frameEffect TEXT,",
+            "frameEffects TEXT,",
             "frameVersion TEXT,",
             "hand TEXT,",
             "hasFoil INTEGER NOT NULL DEFAULT 0,",  # boolean
@@ -229,7 +230,7 @@ def build_sql_schema(output_file: Dict) -> None:
             "toughness TEXT,",
             "type TEXT,",
             "types TEXT,",
-            "uuid TEXT(36) UNIQUE,",
+            "uuid TEXT(36) NOT NULL,",
             "watermark TEXT",
             ");",
             "",
@@ -497,10 +498,15 @@ def handle_price_rows(
     """
     prices = []
     for price_type in card_data["prices"]:
-        if(card_data["prices"][price_type] is not None):
+        if card_data["prices"][price_type] is not None:
             for date, price in card_data["prices"][price_type].items():
                 prices.append(
-                    {"uuid": card_uuid, "type": price_type, "price": price, "date": date}
+                    {
+                        "uuid": card_uuid,
+                        "type": price_type,
+                        "price": price,
+                        "date": date,
+                    }
                 )
 
     return prices
