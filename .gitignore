@@ -100,5 +100,7 @@ ENV/
 *.json
 
 # data base
-*.db
+*.db*
 *.sqlite*
+*.csv*
+*.sql*

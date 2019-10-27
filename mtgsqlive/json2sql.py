@@ -13,28 +13,10 @@ LOGGER = logging.getLogger(__name__)
 version = "v4.5.x"  # need to automate this
 
 
-def main() -> None:
+def execute(input_file, output_file) -> None:
     """
     Main function
     """
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-i",
-        help='input source ("AllSets.json" file or "AllSetFiles" directory)',
-        required=True,
-        metavar="fileIn",
-    )
-    parser.add_argument(
-        "-o",
-        help="output file (*.sqlite, *.db, *.sqlite3, *.db3, *.sql)",
-        required=True,
-        metavar="fileOut",
-    )
-    args = parser.parse_args()
-
-    # Define our I/O paths
-    input_file = pathlib.Path(args.i).expanduser()
-    output_file = {"path": pathlib.Path(args.o).expanduser(), "handle": None}
 
     if not validate_io_streams(input_file, output_file):
         exit(1)
