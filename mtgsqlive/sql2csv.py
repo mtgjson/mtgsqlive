@@ -1,3 +1,4 @@
+import logging
 import pathlib
 import sqlite3
 from typing import Any, Dict
@@ -21,7 +22,7 @@ def execute(input_file: pathlib.Path, output_dir: Dict[str, Any]) -> None:
     tables = cursor.fetchall()
     for table_name in tables:
         table_name = table_name[0]
-        print(f"Handling {table_name}")
+        logging.info(f"Handling {table_name}")
 
         table = pandas.read_sql_query(f"SELECT * from {table_name}", db)
         table.to_csv(

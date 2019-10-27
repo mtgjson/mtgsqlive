@@ -2,6 +2,7 @@
 Main Executor
 """
 import argparse
+import logging
 import pathlib
 
 import mtgsqlive
@@ -13,23 +14,51 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-i",
-        help="input source (AllPrintings.json, AllSetFiles.zip, Database.sql)",
+        help="input source (AllPrintings.json, AllSetFiles.zip)",
         required=True,
         metavar="fileIn",
     )
     parser.add_argument(
         "-o",
-        help="output file (*.sqlite, *.db, *.sqlite3, *.db3, *.sql, *.csv)",
+        help="output folder (outputs/)",
+        default="outputs",
         required=True,
         metavar="fileOut",
+    )
+    parser.add_argument(
+        "--all",
+        help="Build all types (SQLite, SQL, CSV)",
+        action="store_true",
+        required=False,
     )
     args = parser.parse_args()
 
     # Define our I/O paths
     input_file = pathlib.Path(args.i).expanduser()
-    output_file = {"path": pathlib.Path(args.o).expanduser(), "handle": None}
+    output_file = {"path": pathlib.Path(args.o).expanduser().absolute(), "handle": None}
 
-    if str(input_file).endswith(".sqlite"):
+    if args.all:
+        logging.info("> Creating AllPrintings.sqlite")
+        json2sql.execute(
+            input_file,
+            {
+                "path": output_file["path"].joinpath("AllPrintings.sqlite"),
+                "handle": None,
+            },
+        )
+
+        logging.info("> Creating AllPrintings.sql")
+        json2sql.execute(
+            input_file,
+            {"path": output_file["path"].joinpath("AllPrintings.sql"), "handle": None},
+        )
+
+        logging.info("> Creating AllPrintings CSV components")
+        sql2csv.execute(
+            output_file["path"].joinpath("AllPrintings.sqlite"),
+            {"path": output_file["path"].joinpath("csv"), "handle": None},
+        )
+    elif str(input_file).endswith(".sqlite"):
         sql2csv.execute(input_file, output_file)
     else:
         json2sql.execute(input_file, output_file)
