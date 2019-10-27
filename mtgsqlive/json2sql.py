@@ -13,29 +13,10 @@ LOGGER = logging.getLogger(__name__)
 version = "v4.5.x"  # need to automate this
 
 
-def main() -> None:
+def execute(input_file, output_file) -> None:
     """
     Main function
     """
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-i",
-        help='input source ("AllSets.json" file or "AllSetFiles" directory)',
-        required=True,
-        metavar="fileIn",
-    )
-    parser.add_argument(
-        "-o",
-        help="output file (*.sqlite, *.db, *.sqlite3, *.db3, *.sql)",
-        required=True,
-        metavar="fileOut",
-    )
-    args = parser.parse_args()
-
-    # Define our I/O paths
-    input_file = pathlib.Path(args.i).expanduser()
-    output_file = {"path": pathlib.Path(args.o).expanduser(), "handle": None}
-
     if not validate_io_streams(input_file, output_file):
         exit(1)
 
@@ -64,11 +45,11 @@ def main() -> None:
     output_file["handle"].close()
 
 
-def validate_io_streams(input_file: pathlib.Path, output_file: Dict) -> bool:
+def validate_io_streams(input_file: pathlib.Path, output_dir: Dict) -> bool:
     """
     Ensure I/O paths are valid and clean for program
     :param input_file: Input file (JSON)
-    :param output_file: Output file (SQLite)
+    :param output_dir: Output dir
     :return: Good to continue status
     """
     if input_file.is_file():
@@ -80,11 +61,11 @@ def validate_io_streams(input_file: pathlib.Path, output_file: Dict) -> bool:
         LOGGER.fatal(f"Invalid input file/directory. ({input_file})")
         return False
 
-    output_file["path"].parent.mkdir(exist_ok=True)
-    if output_file["path"].is_file():
-        LOGGER.warning(f"Output file {output_file['path']} exists already, moving it.")
-        output_file["path"].replace(
-            output_file["path"].parent.joinpath(output_file["path"].name + ".old")
+    output_dir["path"].parent.mkdir(exist_ok=True)
+    if output_dir["path"].is_file():
+        LOGGER.warning(f"Output path {output_dir['path']} exists already, moving it.")
+        output_dir["path"].replace(
+            output_dir["path"].parent.joinpath(output_dir["path"].name + ".old")
         )
 
     return True
@@ -246,8 +227,8 @@ def build_sql_schema(output_file: Dict) -> None:
             "",
             "",
         ],
-        "foreignData": [
-            "CREATE TABLE `foreignData` (",
+        "foreign_data": [
+            "CREATE TABLE `foreign_data` (",
             "id INTEGER PRIMARY KEY AUTOINCREMENT,",
             "flavorText TEXT,",
             "language TEXT,",
@@ -381,8 +362,8 @@ def sql_insert_all_card_fields(
     """
     sql_dict_insert(card_attributes["cards"], "cards", output_file)
 
-    for foreign_val in card_attributes["foreignData"]:
-        sql_dict_insert(foreign_val, "foreignData", output_file)
+    for foreign_val in card_attributes["foreign_data"]:
+        sql_dict_insert(foreign_val, "foreign_data", output_file)
 
     for legal_val in card_attributes["legalities"]:
         sql_dict_insert(legal_val, "legalities", output_file)
@@ -586,7 +567,7 @@ def handle_card_row_insertion(
 
     return {
         "cards": card_insert_values,
-        "foreignData": foreign_insert_values,
+        "foreign_data": foreign_insert_values,
         "legalities": legal_insert_values,
         "rulings": ruling_insert_values,
         "prices": price_insert_values,
