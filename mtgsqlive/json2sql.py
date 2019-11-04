@@ -179,7 +179,6 @@ def build_sql_schema(output_file: Dict) -> None:
             "variations TEXT,",
             "watermark TEXT",
             ");",
-            # "CREATE UNIQUE INDEX 'cards_uuid' ON cards(uuid);"
             "",
             "",
         ],
@@ -481,15 +480,15 @@ def handle_price_rows(
     for price_type in card_data["prices"]:
         if card_data["prices"][price_type] is not None:
             for date, price in card_data["prices"][price_type].items():
-                prices.append(
-                    {
-                        "uuid": card_uuid,
-                        "type": price_type,
-                        "price": price,
-                        "date": date,
-                    }
-                )
-
+                if price:
+                    prices.append(
+                        {
+                            "uuid": card_uuid,
+                            "type": price_type,
+                            "price": price,
+                            "date": date,
+                        }
+                    )
     return prices
 
 
@@ -628,8 +627,12 @@ def sql_dict_insert(data: Dict[str, Any], table: str, output_file: Dict) -> None
         query = query.format(**data)
         output_file["handle"].write(query)
     else:
-        cursor = output_file["handle"].cursor()
-        columns = ", ".join(data.keys())
-        placeholders = ":" + ", :".join(data.keys())
-        query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
-        cursor.execute(query, data)
+        try:
+            cursor = output_file["handle"].cursor()
+            columns = ", ".join(data.keys())
+            placeholders = ":" + ", :".join(data.keys())
+            query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
+            cursor.execute(query, data)
+        except:
+            datastr = str(data)
+            LOGGER.warning(f"Failed to insert row in {table} with values {datastr}")
