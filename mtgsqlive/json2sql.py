@@ -10,7 +10,7 @@ import time
 from typing import Any, Dict, List, Union
 
 LOGGER = logging.getLogger(__name__)
-version = "v4.5.x"  # need to automate this
+version = "v4.6.0"  # need to automate this
 
 
 def execute(input_file, output_file) -> None:
