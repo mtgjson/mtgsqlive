@@ -42,6 +42,7 @@ def execute(input_file, output_file) -> None:
 
     build_sql_schema(output_file)
     parse_and_import_cards(input_file, output_file)
+    parse_and_import_extras(input_file, output_file)
     output_file["handle"].close()
 
 
@@ -53,8 +54,19 @@ def validate_io_streams(input_file: pathlib.Path, output_dir: Dict) -> bool:
     :return: Good to continue status
     """
     if input_file.is_file():
-        # check file extension here
-        LOGGER.info("Building using AllSets.json master file.")
+        LOGGER.info("Building using AllPrintings.json master file.")
+        if input_file.parent.joinpath("AllPrices.json").is_file():
+            LOGGER.info("Building with AllPrices.json supplement.")
+            output_dir["useAllPrices"] = True
+        if input_file.parent.joinpath("AllDeckFiles").is_dir():
+            LOGGER.info("Building with AllDeckFiles supplement.")
+            output_dir["useAllDeckFiles"] = True
+        if input_file.parent.joinpath("Keywords.json").is_file():
+            LOGGER.info("Building with Keywords.json supplement.")
+            output_dir["useKeywords"] = True
+        if input_file.parent.joinpath("CardTypes.json").is_file():
+            LOGGER.info("Building with CardTypes.json supplement.")
+            output_dir["useCardTypes"] = True
     elif input_file.is_dir():
         LOGGER.info("Building using AllSetFiles directory.")
     else:
@@ -67,7 +79,7 @@ def validate_io_streams(input_file: pathlib.Path, output_dir: Dict) -> bool:
         output_dir["path"].replace(
             output_dir["path"].parent.joinpath(output_dir["path"].name + ".old")
         )
-
+        
     return True
 
 
@@ -272,6 +284,42 @@ def build_sql_schema(output_file: Dict) -> None:
             "",
         ],
     }
+    if output_file["useAllDeckFiles"]:
+        schema["decks"] = [
+            "CREATE TABLE `decks` (",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,",
+            "code TEXT REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE,",
+            "fileName TEXT UNIQUE NOT NULL,",
+            "name TEXT NOT NULL,",
+            "releaseDate TEXT,",
+            "mainBoard TEXT NOT NULL,",
+            "sideBoard TEXT,",
+            "type TEXT",
+            ");",
+            "",
+            "",
+        ]
+    if output_file["useKeywords"]:
+        schema["keywords"] = [
+            "CREATE TABLE `keywords` (",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,",
+            "word TEXT UNIQUE NOT NULL,",
+            "type TEXT NOT NULL",
+            ");",
+            "",
+            "",
+        ]
+    if output_file["useCardTypes"]:
+        schema["types"] = [
+            "CREATE TABLE `types` (",
+            "id INTEGER PRIMARY KEY AUTOINCREMENT,",
+            "type TEXT UNIQUE NOT NULL,",
+            "subTypes TEXT,",
+            "superTypes TEXT",
+            ");",
+            "",
+            "",
+        ]
 
     # Execute the commands
     if output_file["path"].suffix == ".sql":
@@ -289,12 +337,12 @@ def parse_and_import_cards(input_file: pathlib.Path, output_file: Dict) -> None:
     """
     Parse the JSON cards and input them into the database
     :param input_file: AllSets.json file
-    :param output_file: Uutput info dictionary
+    :param output_file: Output info dictionary
     """
     if input_file.is_file():
         LOGGER.info("Loading JSON into memory")
-        json_data = json.load(input_file.open("r", encoding="utf8"))
-
+        with input_file.open("r", encoding="utf8") as f:
+            json_data = json.load(f)
         LOGGER.info("Building sets")
         for set_code, set_data in json_data.items():
             # Handle set insertion
@@ -321,7 +369,8 @@ def parse_and_import_cards(input_file: pathlib.Path, output_file: Dict) -> None:
     elif input_file.is_dir():
         for setFile in input_file.glob("*.json"):
             LOGGER.info("Loading {} into memory...".format(setFile.name))
-            set_data = json.load(setFile.open("r", encoding="utf8"))
+            with setFile.open("r", encoding="utf8") as f:
+                set_data = json.load(f)
             set_code = setFile.stem
             LOGGER.info("Building set: {}".format(set_code))
             set_insert_values = handle_set_row_insertion(set_data)
@@ -343,7 +392,71 @@ def parse_and_import_cards(input_file: pathlib.Path, output_file: Dict) -> None:
                     language, translation, set_code
                 )
                 sql_dict_insert(set_translation_attr, "set_translations", output_file)
+    
+    if output_file["path"].suffix == ".sql":
+        output_file["handle"].write("COMMIT;")
+    else:
+        output_file["handle"].commit()
 
+
+def parse_and_import_extras(input_file: pathlib.Path, output_file: Dict) -> None:
+    """
+    Parse the extra data files and input them into the database
+    :param input_file: AllSets.json file
+    :param output_file: Output info dictionary
+    """
+    if output_file["useAllPrices"]:
+        LOGGER.info("Inserting AllPrices rows")
+        with input_file.parent.joinpath("AllPrices.json").open("r", encoding="utf8") as f:
+            json_data = json.load(f)
+        for card_uuid in json_data:
+            for price_type in json_data[card_uuid]["prices"]:
+                for price_date, price_value in json_data[card_uuid]["prices"][price_type].items():
+                    if price_value:
+                        sql_dict_insert({"uuid":card_uuid,"type":price_type,"date":price_date,"price":float(price_value)}, "prices", output_file)
+            
+    if output_file["useAllDeckFiles"]:
+        LOGGER.info("Inserting Deck rows")
+        for deck_file in input_file.parent.joinpath("AllDeckFiles").glob("*.json"):
+            with deck_file.open("r", encoding="utf8") as f:
+                json_data = json.load(f)
+            deck_data = {}
+            for key, value in json_data.items():
+                if key == "meta": continue
+                if key == "mainBoard" or key == "sideBoard":
+                    cards = []
+                    for card in value:
+                        for i in range(0, card["count"]):
+                            cards.append(card["uuid"])
+                    deck_data[key] = ", ".join(cards)
+                else:
+                    deck_data[key] = value
+            if not "fileName" in deck_data: deck_data["fileName"] = deck_file.stem
+            sql_dict_insert(deck_data, "decks", output_file)
+        
+    if output_file["useKeywords"]:
+        LOGGER.info("Inserting Keyword rows")
+        with input_file.parent.joinpath("Keywords.json").open("r", encoding="utf8") as f:
+            json_data = json.load(f)
+        for keyword_type in json_data:
+            if keyword_type == "meta": continue
+            for keyword in json_data[keyword_type]:
+                sql_dict_insert({"word":keyword,"type":keyword_type}, "keywords", output_file)
+            
+        
+    if output_file["useCardTypes"]:
+        LOGGER.info("Inserting Card Type rows")
+        with input_file.parent.joinpath("CardTypes.json").open("r", encoding="utf8") as f:
+            json_data = json.load(f)
+        for type in json_data["types"]:
+            subtypes = []
+            for subtype in json_data["types"][type]["subTypes"]:
+                subtypes.append(subtype)
+            supertypes = []
+            for supertype in json_data["types"][type]["superTypes"]:
+                supertypes.append(supertype)
+            sql_dict_insert({"type":type,"subTypes":", ".join(subtypes),"superTypes":", ".join(supertypes)}, "types", output_file)
+    
     if output_file["path"].suffix == ".sql":
         output_file["handle"].write("COMMIT;")
     else:
@@ -370,9 +483,10 @@ def sql_insert_all_card_fields(
     for rule_val in card_attributes["rulings"]:
         sql_dict_insert(rule_val, "rulings", output_file)
 
-    for price_val in card_attributes["prices"]:
-        sql_dict_insert(price_val, "prices", output_file)
-
+    if not output_file["useAllPrices"]:
+        for price_val in card_attributes["prices"]:
+            sql_dict_insert(price_val, "prices", output_file)
+    
 
 def handle_set_row_insertion(set_data: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -476,7 +590,7 @@ def handle_price_rows(
     :param card_uuid: UUID to be used as a key
     :return: List of dicts, ready for insertion
     """
-    prices = []
+    prices = []  
     for price_type in card_data["prices"]:
         if card_data["prices"][price_type] is not None:
             for date, price in card_data["prices"][price_type].items():
@@ -605,34 +719,34 @@ def sql_dict_insert(data: Dict[str, Any], table: str, output_file: Dict) -> None
     :param table: Table to insert to
     :param output_file: Output info dictionary
     """
-    if output_file["path"].suffix == ".sql":
-        for key in data.keys():
-            if isinstance(data[key], str):
-                data[key] = "'" + data[key].replace("'", "''").replace('"', '""') + "'"
-            if str(data[key]) == "False":
-                data[key] = 0
-            if str(data[key]) == "True":
-                data[key] = 1
-            if data[key] is None:
-                data[key] = "NULL"
-        query = (
-            "INSERT INTO "
-            + table
-            + " ("
-            + ", ".join(data.keys())
-            + ") VALUES ({"
-            + "}, {".join(data.keys())
-            + "});\n"
-        )
-        query = query.format(**data)
-        output_file["handle"].write(query)
-    else:
-        try:
+    try:
+        if output_file["path"].suffix == ".sql":
+            for key in data.keys():
+                if isinstance(data[key], str):
+                    data[key] = "'" + data[key].replace("'", "''").replace('"', '""') + "'"
+                if str(data[key]) == "False":
+                    data[key] = 0
+                if str(data[key]) == "True":
+                    data[key] = 1
+                if data[key] is None:
+                    data[key] = "NULL"
+            query = (
+                "INSERT INTO "
+                + table
+                + " ("
+                + ", ".join(data.keys())
+                + ") VALUES ({"
+                + "}, {".join(data.keys())
+                + "});\n"
+            )
+            query = query.format(**data)
+            output_file["handle"].write(query)
+        else:
             cursor = output_file["handle"].cursor()
             columns = ", ".join(data.keys())
             placeholders = ":" + ", :".join(data.keys())
             query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
             cursor.execute(query, data)
-        except:
-            datastr = str(data)
-            LOGGER.warning(f"Failed to insert row in {table} with values {datastr}")
+    except:
+        datastr = str(data)
+        LOGGER.warning(f"Failed to insert row in {table} with values {datastr}")
