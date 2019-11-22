@@ -79,7 +79,7 @@ def validate_io_streams(input_file: pathlib.Path, output_dir: Dict) -> bool:
         output_dir["path"].replace(
             output_dir["path"].parent.joinpath(output_dir["path"].name + ".old")
         )
-        
+
     return True
 
 
@@ -392,7 +392,7 @@ def parse_and_import_cards(input_file: pathlib.Path, output_file: Dict) -> None:
                     language, translation, set_code
                 )
                 sql_dict_insert(set_translation_attr, "set_translations", output_file)
-    
+
     if output_file["path"].suffix == ".sql":
         output_file["handle"].write("COMMIT;")
     else:
@@ -407,14 +407,27 @@ def parse_and_import_extras(input_file: pathlib.Path, output_file: Dict) -> None
     """
     if output_file["useAllPrices"]:
         LOGGER.info("Inserting AllPrices rows")
-        with input_file.parent.joinpath("AllPrices.json").open("r", encoding="utf8") as f:
+        with input_file.parent.joinpath("AllPrices.json").open(
+            "r", encoding="utf8"
+        ) as f:
             json_data = json.load(f)
         for card_uuid in json_data:
             for price_type in json_data[card_uuid]["prices"]:
-                for price_date, price_value in json_data[card_uuid]["prices"][price_type].items():
+                for price_date, price_value in json_data[card_uuid]["prices"][
+                    price_type
+                ].items():
                     if price_value:
-                        sql_dict_insert({"uuid":card_uuid,"type":price_type,"date":price_date,"price":float(price_value)}, "prices", output_file)
-            
+                        sql_dict_insert(
+                            {
+                                "uuid": card_uuid,
+                                "type": price_type,
+                                "date": price_date,
+                                "price": float(price_value),
+                            },
+                            "prices",
+                            output_file,
+                        )
+
     if output_file["useAllDeckFiles"]:
         LOGGER.info("Inserting Deck rows")
         for deck_file in input_file.parent.joinpath("AllDeckFiles").glob("*.json"):
@@ -422,7 +435,8 @@ def parse_and_import_extras(input_file: pathlib.Path, output_file: Dict) -> None
                 json_data = json.load(f)
             deck_data = {}
             for key, value in json_data.items():
-                if key == "meta": continue
+                if key == "meta":
+                    continue
                 if key == "mainBoard" or key == "sideBoard":
                     cards = []
                     for card in value:
@@ -431,22 +445,29 @@ def parse_and_import_extras(input_file: pathlib.Path, output_file: Dict) -> None
                     deck_data[key] = ", ".join(cards)
                 else:
                     deck_data[key] = value
-            if not "fileName" in deck_data: deck_data["fileName"] = deck_file.stem
+            if not "fileName" in deck_data:
+                deck_data["fileName"] = deck_file.stem
             sql_dict_insert(deck_data, "decks", output_file)
-        
+
     if output_file["useKeywords"]:
         LOGGER.info("Inserting Keyword rows")
-        with input_file.parent.joinpath("Keywords.json").open("r", encoding="utf8") as f:
+        with input_file.parent.joinpath("Keywords.json").open(
+            "r", encoding="utf8"
+        ) as f:
             json_data = json.load(f)
         for keyword_type in json_data:
-            if keyword_type == "meta": continue
+            if keyword_type == "meta":
+                continue
             for keyword in json_data[keyword_type]:
-                sql_dict_insert({"word":keyword,"type":keyword_type}, "keywords", output_file)
-            
-        
+                sql_dict_insert(
+                    {"word": keyword, "type": keyword_type}, "keywords", output_file
+                )
+
     if output_file["useCardTypes"]:
         LOGGER.info("Inserting Card Type rows")
-        with input_file.parent.joinpath("CardTypes.json").open("r", encoding="utf8") as f:
+        with input_file.parent.joinpath("CardTypes.json").open(
+            "r", encoding="utf8"
+        ) as f:
             json_data = json.load(f)
         for type in json_data["types"]:
             subtypes = []
@@ -455,8 +476,16 @@ def parse_and_import_extras(input_file: pathlib.Path, output_file: Dict) -> None
             supertypes = []
             for supertype in json_data["types"][type]["superTypes"]:
                 supertypes.append(supertype)
-            sql_dict_insert({"type":type,"subTypes":", ".join(subtypes),"superTypes":", ".join(supertypes)}, "types", output_file)
-    
+            sql_dict_insert(
+                {
+                    "type": type,
+                    "subTypes": ", ".join(subtypes),
+                    "superTypes": ", ".join(supertypes),
+                },
+                "types",
+                output_file,
+            )
+
     if output_file["path"].suffix == ".sql":
         output_file["handle"].write("COMMIT;")
     else:
@@ -486,7 +515,7 @@ def sql_insert_all_card_fields(
     if not output_file["useAllPrices"]:
         for price_val in card_attributes["prices"]:
             sql_dict_insert(price_val, "prices", output_file)
-    
+
 
 def handle_set_row_insertion(set_data: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -590,7 +619,7 @@ def handle_price_rows(
     :param card_uuid: UUID to be used as a key
     :return: List of dicts, ready for insertion
     """
-    prices = []  
+    prices = []
     for price_type in card_data["prices"]:
         if card_data["prices"][price_type] is not None:
             for date, price in card_data["prices"][price_type].items():
@@ -723,7 +752,9 @@ def sql_dict_insert(data: Dict[str, Any], table: str, output_file: Dict) -> None
         if output_file["path"].suffix == ".sql":
             for key in data.keys():
                 if isinstance(data[key], str):
-                    data[key] = "'" + data[key].replace("'", "''").replace('"', '""') + "'"
+                    data[key] = (
+                        "'" + data[key].replace("'", "''").replace('"', '""') + "'"
+                    )
                 if str(data[key]) == "False":
                     data[key] = 0
                 if str(data[key]) == "True":
