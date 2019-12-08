@@ -170,6 +170,7 @@ def build_sql_schema(output_file: Dict) -> None:
             "number TEXT,",
             "originalText TEXT,",
             "originalType TEXT,",
+            "otherFaceIds TEXT,",
             "power TEXT,",
             "printings TEXT,",
             "purchaseUrls TEXT,",
