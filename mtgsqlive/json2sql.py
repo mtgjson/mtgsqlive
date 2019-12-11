@@ -53,6 +53,14 @@ def validate_io_streams(input_file: pathlib.Path, output_dir: Dict) -> bool:
     :param output_dir: Output dir
     :return: Good to continue status
     """
+    output_dir.update(
+        {
+            "useAllPrices": False,
+            "useAllDeckFiles": False,
+            "useKeywords": False,
+            "useCardTypes": False,
+        }
+    )
     if input_file.is_file():
         LOGGER.info("Building using AllPrintings.json master file.")
         if input_file.parent.joinpath("AllPrices.json").is_file():
