@@ -101,7 +101,7 @@ def build_sql_schema(output_file: Dict) -> None:
     schema = {
         "sets": [
             "CREATE TABLE `sets` (",
-            "id INTEGER PRIMARY KEY AUTOINCREMENT,",
+            "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
             "baseSetSize INTEGER,",
             "block TEXT,",
             "boosterV3 TEXT,",
@@ -128,7 +128,7 @@ def build_sql_schema(output_file: Dict) -> None:
         ],
         "cards": [
             "CREATE TABLE `cards` (",
-            "id INTEGER PRIMARY KEY AUTOINCREMENT,",
+            "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
             "artist TEXT,",
             "borderColor TEXT,",
             "colorIdentity TEXT,",
@@ -205,7 +205,7 @@ def build_sql_schema(output_file: Dict) -> None:
         ],
         "tokens": [
             "CREATE TABLE `tokens` (",
-            "id INTEGER PRIMARY KEY AUTOINCREMENT,",
+            "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
             "artist TEXT,",
             "borderColor TEXT,",
             "colorIdentity TEXT,",
@@ -239,7 +239,7 @@ def build_sql_schema(output_file: Dict) -> None:
         ],
         "set_translations": [
             "CREATE TABLE `set_translations` (",
-            "id INTEGER PRIMARY KEY AUTOINCREMENT,",
+            "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
             "language TEXT,",
             "setCode TEXT REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE,",
             "translation TEXT",
@@ -249,7 +249,7 @@ def build_sql_schema(output_file: Dict) -> None:
         ],
         "foreign_data": [
             "CREATE TABLE `foreign_data` (",
-            "id INTEGER PRIMARY KEY AUTOINCREMENT,",
+            "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
             "flavorText TEXT,",
             "language TEXT,",
             "multiverseId INTEGER,",
@@ -263,7 +263,7 @@ def build_sql_schema(output_file: Dict) -> None:
         ],
         "legalities": [
             "CREATE TABLE `legalities` (",
-            "id INTEGER PRIMARY KEY AUTOINCREMENT,",
+            "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
             "format TEXT,",
             "status TEXT,",
             "uuid TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE",
@@ -273,7 +273,7 @@ def build_sql_schema(output_file: Dict) -> None:
         ],
         "rulings": [
             "CREATE TABLE `rulings` (",
-            "id INTEGER PRIMARY KEY AUTOINCREMENT,",
+            "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
             "date TEXT,",
             "text TEXT,",
             "uuid TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE",
@@ -283,7 +283,7 @@ def build_sql_schema(output_file: Dict) -> None:
         ],
         "prices": [
             "CREATE TABLE `prices` (",
-            "id INTEGER PRIMARY KEY AUTOINCREMENT,",
+            "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
             "date TEXT,",
             "price REAL,",
             "type TEXT,",
@@ -296,7 +296,7 @@ def build_sql_schema(output_file: Dict) -> None:
     if output_file["useAllDeckFiles"]:
         schema["decks"] = [
             "CREATE TABLE `decks` (",
-            "id INTEGER PRIMARY KEY AUTOINCREMENT,",
+            "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
             "code TEXT REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE,",
             "fileName TEXT UNIQUE NOT NULL,",
             "name TEXT NOT NULL,",
@@ -311,7 +311,7 @@ def build_sql_schema(output_file: Dict) -> None:
     if output_file["useKeywords"]:
         schema["keywords"] = [
             "CREATE TABLE `keywords` (",
-            "id INTEGER PRIMARY KEY AUTOINCREMENT,",
+            "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
             "word TEXT UNIQUE NOT NULL,",
             "type TEXT NOT NULL",
             ");",
@@ -321,7 +321,7 @@ def build_sql_schema(output_file: Dict) -> None:
     if output_file["useCardTypes"]:
         schema["types"] = [
             "CREATE TABLE `types` (",
-            "id INTEGER PRIMARY KEY AUTOINCREMENT,",
+            "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
             "type TEXT UNIQUE NOT NULL,",
             "subTypes TEXT,",
             "superTypes TEXT",
