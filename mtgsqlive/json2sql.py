@@ -669,22 +669,21 @@ def parse_and_import_extras(input_file: pathlib.Path, output_file: Dict) -> None
             "r", encoding="utf8"
         ) as f:
             json_data = json.load(f)
-        for card_uuid in json_data:
-            for price_type in json_data[card_uuid]["prices"]:
-                for price_date, price_value in json_data[card_uuid]["prices"][
-                    price_type
-                ].items():
-                    if price_value:
-                        sql_dict_insert(
-                            {
-                                "uuid": card_uuid,
-                                "type": price_type,
-                                "date": price_date,
-                                "price": float(price_value),
-                            },
-                            "prices",
-                            output_file,
-                        )
+        for card_uuid, price_data in json_data.items():
+            for price_type, price_dict in price_data["prices"].items():
+                if not price_type == "uuid":
+                    for price_date, price_value in price_dict.items():
+                        if price_value:
+                            sql_dict_insert(
+                                {
+                                    "uuid": card_uuid,
+                                    "type": price_type,
+                                    "date": price_date,
+                                    "price": float(price_value),
+                                },
+                                "prices",
+                                output_file,
+                            )
 
     if output_file["useAllDeckFiles"]:
         LOGGER.info("Inserting Deck rows")
@@ -988,7 +987,7 @@ def modify_for_sql_insert(data: Any) -> Union[str, int, float, None]:
         return None
 
     if isinstance(data, list) and data and isinstance(data[0], str):
-        return ", ".join(data)
+        return ",".join(data)
 
     if isinstance(data, bool):
         return int(data)
@@ -998,7 +997,7 @@ def modify_for_sql_insert(data: Any) -> Union[str, int, float, None]:
 
     return ""
 
-def modify_for_sql_file(data: Any) -> Union[str, int, float, None]:
+def modify_for_sql_file(data: Dict[str, Any]) -> Dict[str, Any]:
     for key in data.keys():
         if isinstance(data[key], str):
             data[key] = (
