@@ -10,7 +10,7 @@ import time
 from typing import Any, Dict, List, Union
 
 LOGGER = logging.getLogger(__name__)
-version = "v4.6.0"  # need to automate this
+version = "v4.6.2"  # need to automate this
 
 
 def execute(input_file, output_file) -> None:
@@ -31,6 +31,7 @@ def execute(input_file, output_file) -> None:
                     "-- MTGJSON Version: {}".format(version),
                     "",
                     "START TRANSACTION;",
+                    "SET names 'utf8';",
                     "",
                     "",
                 )
@@ -118,11 +119,11 @@ def build_sql_schema(output_file: Dict) -> None:
                 "mtgoCode TEXT,",
                 "name TEXT,",
                 "parentCode TEXT,",
-                "releaseDate TEXT,",
+                "releaseDate DATE NOT NULL,",
                 "tcgplayerGroupId INTEGER,",
                 "totalSetSize INTEGER,",
                 "type TEXT",
-                ");",
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;",
                 "",
                 "",
             ],
@@ -148,6 +149,7 @@ def build_sql_schema(output_file: Dict) -> None:
                 "hasNonFoil INTEGER NOT NULL DEFAULT 0,",  # boolean
                 "isAlternative INTEGER NOT NULL DEFAULT 0,",  # boolean
                 "isArena INTEGER NOT NULL DEFAULT 0,",  # boolean
+                "isBuyABox INTEGER NOT NULL DEFAULT 0,",  # boolean
                 "isDateStamped INTEGER NOT NULL DEFAULT 0,",  # boolean
                 "isFullArt INTEGER NOT NULL DEFAULT 0,",  # boolean
                 "isMtgo INTEGER NOT NULL DEFAULT 0,",  # boolean
@@ -202,7 +204,7 @@ def build_sql_schema(output_file: Dict) -> None:
                 "uuid VARCHAR(36) UNIQUE NOT NULL,",
                 "variations TEXT,",
                 "watermark TEXT",
-                ");",
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;",
                 "",
                 "",
             ],
@@ -238,7 +240,7 @@ def build_sql_schema(output_file: Dict) -> None:
                 "types TEXT,",
                 "uuid VARCHAR(36) NOT NULL,",
                 "watermark TEXT",
-                ");",
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;",
                 "",
                 "",
             ],
@@ -250,7 +252,7 @@ def build_sql_schema(output_file: Dict) -> None:
                 "INDEX(setCode),",
                 "FOREIGN KEY (setCode) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE,",
                 "translation TEXT",
-                ");",
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;",
                 "",
                 "",
             ],
@@ -259,14 +261,14 @@ def build_sql_schema(output_file: Dict) -> None:
                 "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
                 "flavorText TEXT,",
                 "language TEXT,",
-                "multiverseId TEXT,",
+                "multiverseId INTEGER,",
                 "name TEXT,",
                 "text TEXT,",
                 "type TEXT,",
                 "uuid VARCHAR(36),",
                 "INDEX(uuid),",
                 "FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE",
-                ");",
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;",
                 "",
                 "",
             ],
@@ -278,7 +280,7 @@ def build_sql_schema(output_file: Dict) -> None:
                 "uuid VARCHAR(36),",
                 "INDEX(uuid),",
                 "FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE",
-                ");",
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;",
                 "",
                 "",
             ],
@@ -290,7 +292,7 @@ def build_sql_schema(output_file: Dict) -> None:
                 "uuid VARCHAR(36),",
                 "INDEX(uuid),",
                 "FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE",
-                ");",
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;",
                 "",
                 "",
             ],
@@ -303,7 +305,7 @@ def build_sql_schema(output_file: Dict) -> None:
                 "uuid VARCHAR(36),",
                 "INDEX(uuid),",
                 "FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE",
-                ");",
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;",
                 "",
                 "",
             ],
@@ -321,7 +323,7 @@ def build_sql_schema(output_file: Dict) -> None:
                 "mainBoard TEXT NOT NULL,",
                 "sideBoard TEXT,",
                 "type TEXT",
-                ");",
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;",
                 "",
                 "",
             ]
@@ -331,7 +333,7 @@ def build_sql_schema(output_file: Dict) -> None:
                 "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
                 "word TEXT UNIQUE NOT NULL,",
                 "type TEXT NOT NULL",
-                ");",
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;",
                 "",
                 "",
             ]
@@ -342,13 +344,13 @@ def build_sql_schema(output_file: Dict) -> None:
                 "type TEXT UNIQUE NOT NULL,",
                 "subTypes TEXT,",
                 "superTypes TEXT",
-                ");",
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;",
                 "",
                 "",
             ]
         for q in schema.values():
             output_file["handle"].write("\n".join(q))
-        output_file["handle"].write("COMMIT;\n\nSTART TRANSACTION;\n")
+        output_file["handle"].write("COMMIT;\n\n")
     else:
         schema = {
             "sets": [
@@ -400,6 +402,7 @@ def build_sql_schema(output_file: Dict) -> None:
                 "hasNonFoil INTEGER NOT NULL DEFAULT 0,",  # boolean
                 "isAlternative INTEGER NOT NULL DEFAULT 0,",  # boolean
                 "isArena INTEGER NOT NULL DEFAULT 0,",  # boolean
+                "isBuyABox INTEGER NOT NULL DEFAULT 0,",  # boolean
                 "isDateStamped INTEGER NOT NULL DEFAULT 0,",  # boolean
                 "isFullArt INTEGER NOT NULL DEFAULT 0,",  # boolean
                 "isMtgo INTEGER NOT NULL DEFAULT 0,",  # boolean
@@ -813,7 +816,7 @@ def handle_foreign_rows(
                 "uuid": card_uuid,
                 "flavorText": entry.get("flavorText", ""),
                 "language": entry.get("language", ""),
-                "multiverseId": entry.get("multiverseId", ""),
+                "multiverseId": entry.get("multiverseId", None),
                 "name": entry.get("name", ""),
                 "text": entry.get("text", ""),
                 "type": entry.get("type", ""),
@@ -995,6 +998,19 @@ def modify_for_sql_insert(data: Any) -> Union[str, int, float, None]:
 
     return ""
 
+def modify_for_sql_file(data: Any) -> Union[str, int, float, None]:
+    for key in data.keys():
+        if isinstance(data[key], str):
+            data[key] = (
+                "'" + data[key].replace("'", "''") + "'"
+            )
+        if str(data[key]) == "False":
+            data[key] = 0
+        if str(data[key]) == "True":
+            data[key] = 1
+        if data[key] is None:
+            data[key] = "NULL"
+    return data
 
 def sql_dict_insert(data: Dict[str, Any], table: str, output_file: Dict) -> None:
     """
@@ -1005,17 +1021,7 @@ def sql_dict_insert(data: Dict[str, Any], table: str, output_file: Dict) -> None
     """
     try:
         if output_file["path"].suffix == ".sql":
-            for key in data.keys():
-                if isinstance(data[key], str):
-                    data[key] = (
-                        "'" + data[key].replace("'", "''").replace('"', '""') + "'"
-                    )
-                if str(data[key]) == "False":
-                    data[key] = 0
-                if str(data[key]) == "True":
-                    data[key] = 1
-                if data[key] is None:
-                    data[key] = "NULL"
+            data = modify_for_sql_file(data)
             query = (
                 "INSERT INTO "
                 + table
