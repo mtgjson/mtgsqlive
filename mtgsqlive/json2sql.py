@@ -56,8 +56,8 @@ def getVersion(json_data: Dict) -> str:
             if "version" in set_data["meta"]:
                 return set_data["meta"]["version"]
     return "Unknown"
-    
-    
+
+
 def validate_io_streams(
     input_file: pathlib.Path, output_dir: Dict, extras: bool
 ) -> bool:
@@ -139,35 +139,35 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, distro: str) -> str:
                             if propKey in tables:
                                 if propKey == "foreign_data":
                                     if not tables["foreign_data"]:
-                                        tables["foreign_data"].update({
+                                        tables["foreign_data"] = {
                                             "flavorText": "TEXT",
                                             "language": "TEXT",
                                             "multiverseId": "INTEGER",
                                             "name": "TEXT",
                                             "text": "TEXT",
                                             "type": "TEXT",
-                                        })
+                                        }
                                 if propKey == "legalities":
                                     if not tables["legalities"]:
-                                        tables["legalities"].update({
+                                        tables["legalities"] = {
                                             "format": "TEXT",
                                             "status": "TEXT",
-                                        })
+                                        }
                                 if propKey == "rulings":
                                     if not tables["rulings"]:
-                                        tables["rulings"].update({
+                                        tables["rulings"] = {
                                             "text": "TEXT",
                                             "date": "DATE",
-                                        })
+                                        }
                                         if distro == "sqlite":
                                             tables["rulings"]["date"] = "TEXT"
                                 if propKey == "prices":
                                     if not tables["prices"]:
-                                        tables["prices"].update({
+                                        tables["prices"] = {
                                             "price": "REAL",
                                             "type": "TEXT",
                                             "date": "DATE",
-                                        })
+                                        }
                                         if distro == "sqlite":
                                             tables["prices"]["date"] = "TEXT"
                                 if not "uuid" in tables[propKey]:
@@ -208,10 +208,10 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, distro: str) -> str:
                                             )
                 if setKey == "set_translations":
                     if not tables["set_translations"]:
-                        tables["set_translations"].update({
+                        tables["set_translations"] = {
                             "language": "TEXT",
                             "translation": "TEXT",
-                        })
+                        }
                 if not "setCode" in tables[setKey]:
                     if distro == "sqlite":
                         tables[setKey][
