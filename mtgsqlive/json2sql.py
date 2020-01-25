@@ -120,11 +120,6 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, distro: str) -> str:
         "set_translations": {},
         "foreign_data": {},
     }
-    structures = {
-        "sets": ["cards", "tokens", "translations"],
-        "cards": ["foreignData", "legalities", "rulings", "prices"],
-        "tokens": [],
-    }
     indexes = {
         "cards": {"uuid": "(36) UNIQUE"},
         "tokens": {"uuid": "(36)"},
@@ -133,82 +128,57 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, distro: str) -> str:
     # maxLengths = {}
     for setCode, setData in json_data.items():
         for setKey, setValue in setData.items():
-            if setKey in structures["sets"]:
+            if setKey == "translations":
+                setKey = "set_translations"
+            if setKey in tables:
                 if setKey == "cards" or setKey == "tokens":
-                    if not "setCode" in tables[setKey]:
-                        if distro == "sqlite":
-                            tables[setKey][
-                                "setCode"
-                            ] = "TEXT(8) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
-                        else:
-                            tables[setKey][
-                                "setCode"
-                            ] = "VARCHAR(8) NOT NULL,\n    INDEX(setCode),\n    FOREIGN KEY (setCode) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
                     for item in setValue:
                         for propKey, propValue in item.items():
-                            if propKey in structures[setKey]:
-                                if propKey == "foreignData":
+                            if propKey == "foreignData":
+                                propKey = "foreign_data"
+                            if propKey in tables:
+                                if propKey == "foreign_data":
                                     if not tables["foreign_data"]:
-                                        tables["foreign_data"] = {
+                                        tables["foreign_data"].update({
                                             "flavorText": "TEXT",
                                             "language": "TEXT",
                                             "multiverseId": "INTEGER",
                                             "name": "TEXT",
                                             "text": "TEXT",
                                             "type": "TEXT",
-                                        }
-                                        if distro == "sqlite":
-                                            tables["foreign_data"][
-                                                "uuid"
-                                            ] = "TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
-                                        else:
-                                            tables["foreign_data"][
-                                                "uuid"
-                                            ] = "VARCHAR(36) NOT NULL,\n    INDEX(uuid),\n    FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
+                                        })
                                 if propKey == "legalities":
                                     if not tables["legalities"]:
-                                        tables["legalities"] = {
+                                        tables["legalities"].update({
                                             "format": "TEXT",
                                             "status": "TEXT",
-                                        }
-                                        if distro == "sqlite":
-                                            tables["legalities"][
-                                                "uuid"
-                                            ] = "TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
-                                        else:
-                                            tables["legalities"][
-                                                "uuid"
-                                            ] = "VARCHAR(36) NOT NULL,\n    INDEX(uuid),\n    FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
+                                        })
                                 if propKey == "rulings":
                                     if not tables["rulings"]:
-                                        tables["rulings"] = {"text": "TEXT"}
+                                        tables["rulings"].update({
+                                            "text": "TEXT",
+                                            "date": "DATE",
+                                        })
                                         if distro == "sqlite":
                                             tables["rulings"]["date"] = "TEXT"
-                                            tables["rulings"][
-                                                "uuid"
-                                            ] = "TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
-                                        else:
-                                            tables["rulings"]["date"] = "DATE"
-                                            tables["rulings"][
-                                                "uuid"
-                                            ] = "VARCHAR(36) NOT NULL,\n    INDEX(uuid),\n    FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
                                 if propKey == "prices":
                                     if not tables["prices"]:
-                                        tables["prices"] = {
+                                        tables["prices"].update({
                                             "price": "REAL",
                                             "type": "TEXT",
-                                        }
+                                            "date": "DATE",
+                                        })
                                         if distro == "sqlite":
                                             tables["prices"]["date"] = "TEXT"
-                                            tables["prices"][
-                                                "uuid"
-                                            ] = "TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
-                                        else:
-                                            tables["prices"]["date"] = "DATE"
-                                            tables["prices"][
-                                                "uuid"
-                                            ] = "VARCHAR(36) NOT NULL,\n    INDEX(uuid),\n    FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
-
+                                if not "uuid" in tables[propKey]:
+                                    if distro == "sqlite":
+                                        tables[propKey][
+                                            "uuid"
+                                        ] = "TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
+                                    else:
+                                        tables[propKey][
+                                            "uuid"
+                                        ] = "VARCHAR(36) NOT NULL,\n    INDEX(uuid),\n    FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
                             else:
                                 if not propKey in tables[setKey].keys():
                                     if isinstance(propValue, str):
@@ -236,18 +206,21 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, distro: str) -> str:
                                                 + indexes[setKey][propKey]
                                                 + " NOT NULL"
                                             )
-                if setKey == "translations":
+                if setKey == "set_translations":
                     if not tables["set_translations"]:
-                        tables["set_translations"]["language"] = "TEXT"
-                        tables["set_translations"]["translation"] = "TEXT"
-                        if distro == "sqlite":
-                            tables["set_translations"][
-                                "setCode"
-                            ] = "TEXT(8) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
-                        else:
-                            tables["set_translations"][
-                                "setCode"
-                            ] = "VARCHAR(8) NOT NULL,\n    INDEX(setCode),\n    FOREIGN KEY (setCode) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
+                        tables["set_translations"].update({
+                            "language": "TEXT",
+                            "translation": "TEXT",
+                        })
+                if not "setCode" in tables[setKey]:
+                    if distro == "sqlite":
+                        tables[setKey][
+                            "setCode"
+                        ] = "TEXT(8) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
+                    else:
+                        tables[setKey][
+                            "setCode"
+                        ] = "VARCHAR(8) NOT NULL,\n    INDEX(setCode),\n    FOREIGN KEY (setCode) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
             else:
                 if not setKey in tables["sets"].keys():
                     if setKey == "releaseDate" and not distro == "sqlite":
