@@ -878,6 +878,8 @@ def handle_price_rows(
     """
     prices = []
     for price_type in card_data["prices"]:
+        if price_type == "MtgjsonpricesobjectParentIsCardObject":
+            continue
         if card_data["prices"][price_type] is not None:
             for date, price in card_data["prices"][price_type].items():
                 if price:
