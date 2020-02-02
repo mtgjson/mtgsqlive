@@ -14,7 +14,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-i",
-        help="input source (AllPrintings.json, AllSetFiles.zip)",
+        help="input source (AllPrintings.json)",
         required=True,
         metavar="fileIn",
     )
@@ -28,6 +28,12 @@ if __name__ == "__main__":
     parser.add_argument(
         "--all",
         help="Build all types (SQLite, SQL, CSV)",
+        action="store_true",
+        required=False,
+    )
+    parser.add_argument(
+        "-x",
+        help="Check for extra input files",
         action="store_true",
         required=False,
     )
@@ -45,12 +51,14 @@ if __name__ == "__main__":
                 "path": output_file["path"].joinpath("AllPrintings.sqlite"),
                 "handle": None,
             },
+            args.x,
         )
 
         logging.info("> Creating AllPrintings.sql")
         json2sql.execute(
             input_file,
             {"path": output_file["path"].joinpath("AllPrintings.sql"), "handle": None},
+            args.x,
         )
 
         logging.info("> Creating AllPrintings CSV components")
@@ -61,4 +69,4 @@ if __name__ == "__main__":
     elif str(input_file).endswith(".sqlite"):
         sql2csv.execute(input_file, output_file)
     else:
-        json2sql.execute(input_file, output_file)
+        json2sql.execute(input_file, output_file, args.x)

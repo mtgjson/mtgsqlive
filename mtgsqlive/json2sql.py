@@ -10,16 +10,19 @@ import time
 from typing import Any, Dict, List, Union
 
 LOGGER = logging.getLogger(__name__)
-version = "v4.6.2"  # need to automate this
 
 
-def execute(input_file, output_file) -> None:
+def execute(input_file, output_file, extras=False) -> None:
     """
     Main function
     """
-    if not validate_io_streams(input_file, output_file):
+    if not validate_io_streams(input_file, output_file, extras):
         exit(1)
 
+    LOGGER.info("Loading JSON into memory")
+    with input_file.open("r", encoding="utf8") as f:
+        json_data = json.load(f)
+    version = getVersion(json_data)
     # Build the SQLite database/file
     if output_file["path"].suffix == ".sql":
         output_file["handle"] = open(output_file["path"], "w", encoding="utf8")
@@ -41,13 +44,23 @@ def execute(input_file, output_file) -> None:
         output_file["handle"] = sqlite3.connect(str(output_file["path"]))
         output_file["handle"].execute("pragma journal_mode=wal;")
 
-    build_sql_schema(output_file)
-    parse_and_import_cards(input_file, output_file)
+    build_sql_schema(json_data, output_file)
+    parse_and_import_cards(json_data, input_file, output_file)
     parse_and_import_extras(input_file, output_file)
     output_file["handle"].close()
 
 
-def validate_io_streams(input_file: pathlib.Path, output_dir: Dict) -> bool:
+def getVersion(json_data: Dict) -> str:
+    for set_code, set_data in json_data.items():
+        if "meta" in set_data:
+            if "version" in set_data["meta"]:
+                return set_data["meta"]["version"]
+    return "Unknown"
+
+
+def validate_io_streams(
+    input_file: pathlib.Path, output_dir: Dict, extras: bool
+) -> bool:
     """
     Ensure I/O paths are valid and clean for program
     :param input_file: Input file (JSON)
@@ -64,20 +77,19 @@ def validate_io_streams(input_file: pathlib.Path, output_dir: Dict) -> bool:
     )
     if input_file.is_file():
         LOGGER.info("Building using AllPrintings.json master file.")
-        if input_file.parent.joinpath("AllPrices.json").is_file():
-            LOGGER.info("Building with AllPrices.json supplement.")
-            output_dir["useAllPrices"] = True
-        if input_file.parent.joinpath("AllDeckFiles").is_dir():
-            LOGGER.info("Building with AllDeckFiles supplement.")
-            output_dir["useAllDeckFiles"] = True
-        if input_file.parent.joinpath("Keywords.json").is_file():
-            LOGGER.info("Building with Keywords.json supplement.")
-            output_dir["useKeywords"] = True
-        if input_file.parent.joinpath("CardTypes.json").is_file():
-            LOGGER.info("Building with CardTypes.json supplement.")
-            output_dir["useCardTypes"] = True
-    elif input_file.is_dir():
-        LOGGER.info("Building using AllSetFiles directory.")
+        if extras:
+            if input_file.parent.joinpath("AllPrices.json").is_file():
+                LOGGER.info("Building with AllPrices.json supplement.")
+                output_dir["useAllPrices"] = True
+            if input_file.parent.joinpath("AllDeckFiles").is_dir():
+                LOGGER.info("Building with AllDeckFiles supplement.")
+                output_dir["useAllDeckFiles"] = True
+            if input_file.parent.joinpath("Keywords.json").is_file():
+                LOGGER.info("Building with Keywords.json supplement.")
+                output_dir["useKeywords"] = True
+            if input_file.parent.joinpath("CardTypes.json").is_file():
+                LOGGER.info("Building with CardTypes.json supplement.")
+                output_dir["useCardTypes"] = True
     else:
         LOGGER.fatal(f"Invalid input file/directory. ({input_file})")
         return False
@@ -92,564 +104,241 @@ def validate_io_streams(input_file: pathlib.Path, output_dir: Dict) -> bool:
     return True
 
 
-def build_sql_schema(output_file: Dict) -> None:
+def generate_sql_schema(json_data: Dict, output_file: Dict, distro: str) -> str:
+    """
+    Generate the SQLite DB schema from the JSON input
+    :param data: JSON input dict
+    :param distro: Target SQL distro
+    """
+    tables = {
+        "sets": {},
+        "cards": {},
+        "tokens": {},
+        "prices": {},
+        "rulings": {},
+        "legalities": {},
+        "set_translations": {},
+        "foreign_data": {},
+    }
+    indexes = {
+        "cards": {"uuid": "(36) UNIQUE"},
+        "tokens": {"uuid": "(36)"},
+        "sets": {"code": "(8) UNIQUE"},
+    }
+    # maxLengths = {}
+    for setCode, setData in json_data.items():
+        for setKey, setValue in setData.items():
+            if setKey == "translations":
+                setKey = "set_translations"
+            if setKey in tables:
+                if setKey == "cards" or setKey == "tokens":
+                    for item in setValue:
+                        for propKey, propValue in item.items():
+                            if propKey == "foreignData":
+                                propKey = "foreign_data"
+                            if propKey in tables:
+                                if propKey == "foreign_data":
+                                    if not tables["foreign_data"]:
+                                        tables["foreign_data"] = {
+                                            "flavorText": "TEXT",
+                                            "language": "TEXT",
+                                            "multiverseId": "INTEGER",
+                                            "name": "TEXT",
+                                            "text": "TEXT",
+                                            "type": "TEXT",
+                                        }
+                                if propKey == "legalities":
+                                    if not tables["legalities"]:
+                                        tables["legalities"] = {
+                                            "format": "TEXT",
+                                            "status": "TEXT",
+                                        }
+                                if propKey == "rulings":
+                                    if not tables["rulings"]:
+                                        tables["rulings"] = {
+                                            "text": "TEXT",
+                                            "date": "DATE",
+                                        }
+                                        if distro == "sqlite":
+                                            tables["rulings"]["date"] = "TEXT"
+                                if propKey == "prices":
+                                    if not tables["prices"]:
+                                        tables["prices"] = {
+                                            "price": "REAL",
+                                            "type": "TEXT",
+                                            "date": "DATE",
+                                        }
+                                        if distro == "sqlite":
+                                            tables["prices"]["date"] = "TEXT"
+                                if not "uuid" in tables[propKey]:
+                                    if distro == "sqlite":
+                                        tables[propKey][
+                                            "uuid"
+                                        ] = "TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
+                                    else:
+                                        tables[propKey][
+                                            "uuid"
+                                        ] = "VARCHAR(36) NOT NULL,\n    INDEX(uuid),\n    FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
+                            else:
+                                if not propKey in tables[setKey].keys():
+                                    if isinstance(propValue, str):
+                                        tables[setKey][propKey] = "TEXT"
+                                    if isinstance(propValue, int):
+                                        tables[setKey][propKey] = "INTEGER"
+                                    if isinstance(propValue, float):
+                                        tables[setKey][propKey] = "FLOAT"
+                                    if isinstance(propValue, bool):
+                                        tables[setKey][
+                                            propKey
+                                        ] = "INTEGER NOT NULL DEFAULT 0"
+                                    if isinstance(propValue, list):
+                                        tables[setKey][propKey] = "TEXT"
+                                    if isinstance(propValue, dict):
+                                        tables[setKey][propKey] = "TEXT"
+                                    if propKey in indexes[setKey]:
+                                        if distro == "sqlite":
+                                            tables[setKey][propKey] += (
+                                                indexes[setKey][propKey] + " NOT NULL"
+                                            )
+                                        else:
+                                            tables[setKey][propKey] = (
+                                                "VARCHAR"
+                                                + indexes[setKey][propKey]
+                                                + " NOT NULL"
+                                            )
+                if setKey == "set_translations":
+                    if not tables["set_translations"]:
+                        tables["set_translations"] = {
+                            "language": "TEXT",
+                            "translation": "TEXT",
+                        }
+                if not "setCode" in tables[setKey]:
+                    if distro == "sqlite":
+                        tables[setKey][
+                            "setCode"
+                        ] = "TEXT(8) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
+                    else:
+                        tables[setKey][
+                            "setCode"
+                        ] = "VARCHAR(8) NOT NULL,\n    INDEX(setCode),\n    FOREIGN KEY (setCode) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
+            else:
+                if not setKey in tables["sets"].keys():
+                    if setKey == "releaseDate" and not distro == "sqlite":
+                        tables["sets"][setKey] = "DATE"
+                    elif isinstance(setValue, str):
+                        tables["sets"][setKey] = "TEXT"
+                    elif isinstance(setValue, int):
+                        tables["sets"][setKey] = "INTEGER"
+                    elif isinstance(setValue, float):
+                        tables["sets"][setKey] = "FLOAT"
+                    elif isinstance(setValue, bool):
+                        tables["sets"][setKey] = "INTEGER NOT NULL DEFAULT 0"
+                    elif isinstance(setValue, list):
+                        tables["sets"][setKey] = "TEXT"
+                    elif isinstance(setValue, dict):
+                        tables["sets"][setKey] = "TEXT"
+                    if setKey in indexes["sets"]:
+                        if distro == "sqlite":
+                            tables["sets"][setKey] += (
+                                indexes["sets"][setKey] + " NOT NULL"
+                            )
+                        else:
+                            tables["sets"][setKey] = (
+                                "VARCHAR" + indexes["sets"][setKey] + " NOT NULL"
+                            )
+    # extra tables
+    if output_file["useAllDeckFiles"]:
+        tables["decks"] = {
+            "fileName": "TEXT",
+            "name": "TEXT",
+            "mainboard": "TEXT NOT NULL",
+            "sideboard": "TEXT",
+            "type": "TEXT",
+        }
+        if distro == "sqlite":
+            tables["decks"]["releaseDate"] = "TEXT"
+            tables["decks"][
+                "code"
+            ] = "TEXT(8) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
+        else:
+            tables["decks"]["releaseDate"] = "DATE"
+            tables["decks"][
+                "code"
+            ] = "VARCHAR(8) NOT NULL,\n    INDEX(code),\n    FOREIGN KEY (code) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
+    if output_file["useKeywords"]:
+        tables["keywords"] = {"word": "TEXT UNIQUE NOT NULL", "type": "TEXT NOT NULL"}
+    if output_file["useCardTypes"]:
+        tables["types"] = {
+            "type": "TEXT UNIQUE NOT NULL",
+            "subTypes": "TEXT",
+            "supertypes": "TEXT",
+        }
+    # create query string
+    q = ""
+    for tableName, tableData in tables.items():
+        q += f"CREATE TABLE `{tableName}` (\n"
+        if distro == "sqlite":
+            q += "    id INTEGER PRIMARY KEY AUTOINCREMENT,\n"
+        else:
+            q += "    id INTEGER PRIMARY KEY AUTO_INCREMENT,\n"
+        for colName in sorted(tableData.keys()):
+            q += f"    {colName} {tableData[colName]},\n"
+        if distro == "sqlite":
+            q = q[:-2] + "\n);\n\n"
+        else:
+            q = q[:-2] + "\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;\n\n"
+
+    return q
+
+
+def build_sql_schema(json_data: Dict, output_file: Dict) -> None:
     """
     Create the SQLite DB schema
     :param output_file: Output info dict
     """
     LOGGER.info("Building SQLite Schema")
     if output_file["path"].suffix == ".sql":
-        schema = {
-            "sets": [
-                "CREATE TABLE `sets` (",
-                "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
-                "baseSetSize INTEGER,",
-                "block TEXT,",
-                "boosterV3 TEXT,",
-                "code VARCHAR(8) UNIQUE NOT NULL,",
-                "codeV3 TEXT,",
-                "isFoilOnly INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isForeignOnly INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isOnlineOnly INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isPartialPreview INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "keyruneCode TEXT,",
-                "mcmId INTEGER,",
-                "mcmName TEXT,",
-                "meta TEXT,",
-                "mtgoCode TEXT,",
-                "name TEXT,",
-                "parentCode TEXT,",
-                "releaseDate DATE NOT NULL,",
-                "tcgplayerGroupId INTEGER,",
-                "totalSetSize INTEGER,",
-                "type TEXT",
-                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;",
-                "",
-                "",
-            ],
-            "cards": [
-                "CREATE TABLE `cards` (",
-                "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
-                "artist TEXT,",
-                "borderColor TEXT,",
-                "colorIdentity TEXT,",
-                "colorIndicator TEXT,",
-                "colors TEXT,",
-                "convertedManaCost FLOAT,",
-                "duelDeck TEXT(1),",
-                "edhrecRank TEXT,",
-                "faceConvertedManaCost FLOAT,",
-                "flavorText TEXT,",
-                "frameEffect TEXT,",
-                "frameEffects TEXT,",
-                "frameVersion TEXT,",
-                "hand TEXT,",
-                "hasFoil INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "hasNoDeckLimit INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "hasNonFoil INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isAlternative INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isArena INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isBuyABox INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isDateStamped INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isFullArt INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isMtgo INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isOnlineOnly INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isOversized INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isPaper INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isPromo INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isReprint INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isReserved INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isStarter INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isStorySpotlight INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isTextless INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isTimeshifted INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "layout TEXT,",
-                "leadershipSkills TEXT,",
-                "life TEXT,",
-                "loyalty TEXT,",
-                "manaCost TEXT,",
-                "mcmId INTEGER,",
-                "mcmMetaId INTEGER,",
-                "mcmName TEXT,",
-                "mtgArenaId INTEGER,",
-                "mtgoFoilId INTEGER,",
-                "mtgoId INTEGER,",
-                "mtgstocksId INTEGER,",
-                "multiverseId INTEGER,",
-                "name TEXT,",
-                "names TEXT,",
-                "number TEXT,",
-                "originalText TEXT,",
-                "originalType TEXT,",
-                "otherFaceIds TEXT,",
-                "power TEXT,",
-                "printings TEXT,",
-                "purchaseUrls TEXT,",
-                "rarity TEXT,",
-                "scryfallId VARCHAR(36),",
-                "scryfallIllustrationId VARCHAR(36),",
-                "scryfallOracleId VARCHAR(36),",
-                "setCode VARCHAR(8),"
-                "INDEX(setCode),"
-                "FOREIGN KEY (setCode) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE,",
-                "side TEXT,",
-                "subtypes TEXT,",
-                "supertypes TEXT,",
-                "tcgplayerProductId INTEGER,",
-                "tcgplayerPurchaseUrl TEXT,",
-                "text TEXT,",
-                "toughness TEXT,",
-                "type TEXT,",
-                "types TEXT,",
-                "uuid VARCHAR(36) UNIQUE NOT NULL,",
-                "variations TEXT,",
-                "watermark TEXT",
-                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;",
-                "",
-                "",
-            ],
-            "tokens": [
-                "CREATE TABLE `tokens` (",
-                "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
-                "artist TEXT,",
-                "borderColor TEXT,",
-                "colorIdentity TEXT,",
-                "colorIndicator TEXT,",
-                "colors TEXT,",
-                "duelDeck TEXT(1),",
-                "isOnlineOnly INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "layout TEXT,",
-                "loyalty TEXT,",
-                "name TEXT,",
-                "names TEXT,",
-                "number TEXT,",
-                "power TEXT,",
-                "reverseRelated TEXT,",
-                "scryfallId VARCHAR(36),",
-                "scryfallIllustrationId VARCHAR(36),",
-                "scryfallOracleId VARCHAR(36),",
-                "setCode VARCHAR(8),",
-                "INDEX(setCode),",
-                "FOREIGN KEY (setCode) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE,",
-                "side TEXT,",
-                "subtypes TEXT,",
-                "supertypes TEXT,",
-                "text TEXT,",
-                "toughness TEXT,",
-                "type TEXT,",
-                "types TEXT,",
-                "uuid VARCHAR(36) NOT NULL,",
-                "watermark TEXT",
-                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;",
-                "",
-                "",
-            ],
-            "set_translations": [
-                "CREATE TABLE `set_translations` (",
-                "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
-                "language TEXT,",
-                "setCode VARCHAR(8),",
-                "INDEX(setCode),",
-                "FOREIGN KEY (setCode) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE,",
-                "translation TEXT",
-                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;",
-                "",
-                "",
-            ],
-            "foreign_data": [
-                "CREATE TABLE `foreign_data` (",
-                "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
-                "flavorText TEXT,",
-                "language TEXT,",
-                "multiverseId INTEGER,",
-                "name TEXT,",
-                "text TEXT,",
-                "type TEXT,",
-                "uuid VARCHAR(36),",
-                "INDEX(uuid),",
-                "FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE",
-                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;",
-                "",
-                "",
-            ],
-            "legalities": [
-                "CREATE TABLE `legalities` (",
-                "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
-                "format TEXT,",
-                "status TEXT,",
-                "uuid VARCHAR(36),",
-                "INDEX(uuid),",
-                "FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE",
-                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;",
-                "",
-                "",
-            ],
-            "rulings": [
-                "CREATE TABLE `rulings` (",
-                "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
-                "date TEXT,",
-                "text TEXT,",
-                "uuid VARCHAR(36),",
-                "INDEX(uuid),",
-                "FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE",
-                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;",
-                "",
-                "",
-            ],
-            "prices": [
-                "CREATE TABLE `prices` (",
-                "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
-                "date TEXT,",
-                "price REAL,",
-                "type TEXT,",
-                "uuid VARCHAR(36),",
-                "INDEX(uuid),",
-                "FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE",
-                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;",
-                "",
-                "",
-            ],
-        }
-        if output_file["useAllDeckFiles"]:
-            schema["decks"] = [
-                "CREATE TABLE `decks` (",
-                "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
-                "code VARCHAR(8),",
-                "INDEX(code),",
-                "FOREIGN KEY (code) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE,",
-                "fileName TEXT UNIQUE NOT NULL,",
-                "name TEXT NOT NULL,",
-                "releaseDate TEXT,",
-                "mainBoard TEXT NOT NULL,",
-                "sideBoard TEXT,",
-                "type TEXT",
-                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;",
-                "",
-                "",
-            ]
-        if output_file["useKeywords"]:
-            schema["keywords"] = [
-                "CREATE TABLE `keywords` (",
-                "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
-                "word TEXT UNIQUE NOT NULL,",
-                "type TEXT NOT NULL",
-                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;",
-                "",
-                "",
-            ]
-        if output_file["useCardTypes"]:
-            schema["types"] = [
-                "CREATE TABLE `types` (",
-                "id INTEGER PRIMARY KEY AUTO_INCREMENT,",
-                "type TEXT UNIQUE NOT NULL,",
-                "subTypes TEXT,",
-                "superTypes TEXT",
-                ") ENGINE=InnoDB DEFAULT CHARSET=utf8;",
-                "",
-                "",
-            ]
-        for q in schema.values():
-            output_file["handle"].write("\n".join(q))
+        schema = generate_sql_schema(json_data, output_file, "mysql")
+        output_file["handle"].write(schema)
         output_file["handle"].write("COMMIT;\n\n")
     else:
-        schema = {
-            "sets": [
-                "CREATE TABLE `sets` (",
-                "id INTEGER PRIMARY KEY AUTOINCREMENT,",
-                "baseSetSize INTEGER,",
-                "block TEXT,",
-                "boosterV3 TEXT,",
-                "code TEXT UNIQUE NOT NULL,",
-                "codeV3 TEXT,",
-                "isFoilOnly INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isForeignOnly INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isOnlineOnly INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isPartialPreview INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "keyruneCode TEXT,",
-                "mcmId INTEGER,",
-                "mcmName TEXT,",
-                "meta TEXT,",
-                "mtgoCode TEXT,",
-                "name TEXT,",
-                "parentCode TEXT,",
-                "releaseDate TEXT,",
-                "tcgplayerGroupId INTEGER,",
-                "totalSetSize INTEGER,",
-                "type TEXT",
-                ");",
-                "",
-                "",
-            ],
-            "cards": [
-                "CREATE TABLE `cards` (",
-                "id INTEGER PRIMARY KEY AUTOINCREMENT,",
-                "artist TEXT,",
-                "borderColor TEXT,",
-                "colorIdentity TEXT,",
-                "colorIndicator TEXT,",
-                "colors TEXT,",
-                "convertedManaCost FLOAT,",
-                "duelDeck TEXT(1),",
-                "edhrecRank TEXT,",
-                "faceConvertedManaCost FLOAT,",
-                "flavorText TEXT,",
-                "frameEffect TEXT,",
-                "frameEffects TEXT,",
-                "frameVersion TEXT,",
-                "hand TEXT,",
-                "hasFoil INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "hasNoDeckLimit INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "hasNonFoil INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isAlternative INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isArena INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isBuyABox INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isDateStamped INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isFullArt INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isMtgo INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isOnlineOnly INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isOversized INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isPaper INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isPromo INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isReprint INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isReserved INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isStarter INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isStorySpotlight INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isTextless INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "isTimeshifted INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "layout TEXT,",
-                "leadershipSkills TEXT,",
-                "life TEXT,",
-                "loyalty TEXT,",
-                "manaCost TEXT,",
-                "mcmId INTEGER,",
-                "mcmMetaId INTEGER,",
-                "mcmName TEXT,",
-                "mtgArenaId INTEGER,",
-                "mtgoFoilId INTEGER,",
-                "mtgoId INTEGER,",
-                "mtgstocksId INTEGER,",
-                "multiverseId INTEGER,",
-                "name TEXT,",
-                "names TEXT,",
-                "number TEXT,",
-                "originalText TEXT,",
-                "originalType TEXT,",
-                "otherFaceIds TEXT,",
-                "power TEXT,",
-                "printings TEXT,",
-                "purchaseUrls TEXT,",
-                "rarity TEXT,",
-                "scryfallId TEXT(36),",
-                "scryfallIllustrationId TEXT(36),",
-                "scryfallOracleId TEXT(36),",
-                "setCode TEXT REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE,",
-                "side TEXT,",
-                "subtypes TEXT,",
-                "supertypes TEXT,",
-                "tcgplayerProductId INTEGER,",
-                "tcgplayerPurchaseUrl TEXT,",
-                "text TEXT,",
-                "toughness TEXT,",
-                "type TEXT,",
-                "types TEXT,",
-                "uuid TEXT(36) UNIQUE NOT NULL,",
-                "variations TEXT,",
-                "watermark TEXT",
-                ");",
-                "",
-                "",
-            ],
-            "tokens": [
-                "CREATE TABLE `tokens` (",
-                "id INTEGER PRIMARY KEY AUTOINCREMENT,",
-                "artist TEXT,",
-                "borderColor TEXT,",
-                "colorIdentity TEXT,",
-                "colorIndicator TEXT,",
-                "colors TEXT,",
-                "duelDeck TEXT(1),",
-                "isOnlineOnly INTEGER NOT NULL DEFAULT 0,",  # boolean
-                "layout TEXT,",
-                "loyalty TEXT,",
-                "name TEXT,",
-                "names TEXT,",
-                "number TEXT,",
-                "power TEXT,",
-                "reverseRelated TEXT,",
-                "scryfallId TEXT(36),",
-                "scryfallIllustrationId TEXT(36),",
-                "scryfallOracleId TEXT(36),",
-                "setCode TEXT REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE,",
-                "side TEXT,",
-                "subtypes TEXT,",
-                "supertypes TEXT,",
-                "text TEXT,",
-                "toughness TEXT,",
-                "type TEXT,",
-                "types TEXT,",
-                "uuid TEXT(36) NOT NULL,",
-                "watermark TEXT",
-                ");",
-                "",
-                "",
-            ],
-            "set_translations": [
-                "CREATE TABLE `set_translations` (",
-                "id INTEGER PRIMARY KEY AUTOINCREMENT,",
-                "language TEXT,",
-                "setCode TEXT REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE,",
-                "translation TEXT",
-                ");",
-                "",
-                "",
-            ],
-            "foreign_data": [
-                "CREATE TABLE `foreign_data` (",
-                "id INTEGER PRIMARY KEY AUTOINCREMENT,",
-                "flavorText TEXT,",
-                "language TEXT,",
-                "multiverseId INTEGER,",
-                "name TEXT,",
-                "text TEXT,",
-                "type TEXT,",
-                "uuid TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE",
-                ");",
-                "",
-                "",
-            ],
-            "legalities": [
-                "CREATE TABLE `legalities` (",
-                "id INTEGER PRIMARY KEY AUTOINCREMENT,",
-                "format TEXT,",
-                "status TEXT,",
-                "uuid TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE",
-                ");",
-                "",
-                "",
-            ],
-            "rulings": [
-                "CREATE TABLE `rulings` (",
-                "id INTEGER PRIMARY KEY AUTOINCREMENT,",
-                "date TEXT,",
-                "text TEXT,",
-                "uuid TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE",
-                ");",
-                "",
-                "",
-            ],
-            "prices": [
-                "CREATE TABLE `prices` (",
-                "id INTEGER PRIMARY KEY AUTOINCREMENT,",
-                "date TEXT,",
-                "price REAL,",
-                "type TEXT,",
-                "uuid TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE",
-                ");",
-                "",
-                "",
-            ],
-        }
-        if output_file["useAllDeckFiles"]:
-            schema["decks"] = [
-                "CREATE TABLE `decks` (",
-                "id INTEGER PRIMARY KEY AUTOINCREMENT,",
-                "code TEXT REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE,",
-                "fileName TEXT UNIQUE NOT NULL,",
-                "name TEXT NOT NULL,",
-                "releaseDate TEXT,",
-                "mainBoard TEXT NOT NULL,",
-                "sideBoard TEXT,",
-                "type TEXT",
-                ");",
-                "",
-                "",
-            ]
-        if output_file["useKeywords"]:
-            schema["keywords"] = [
-                "CREATE TABLE `keywords` (",
-                "id INTEGER PRIMARY KEY AUTOINCREMENT,",
-                "word TEXT UNIQUE NOT NULL,",
-                "type TEXT NOT NULL",
-                ");",
-                "",
-                "",
-            ]
-        if output_file["useCardTypes"]:
-            schema["types"] = [
-                "CREATE TABLE `types` (",
-                "id INTEGER PRIMARY KEY AUTOINCREMENT,",
-                "type TEXT UNIQUE NOT NULL,",
-                "subTypes TEXT,",
-                "superTypes TEXT",
-                ");",
-                "",
-                "",
-            ]
+        schema = generate_sql_schema(json_data, output_file, "sqlite")
         cursor = output_file["handle"].cursor()
-        for q in schema.values():
-            cursor.execute("".join(q))
+        cursor.executescript(schema)
         output_file["handle"].commit()
 
 
-def parse_and_import_cards(input_file: pathlib.Path, output_file: Dict) -> None:
+def parse_and_import_cards(
+    json_data: Dict, input_file: pathlib.Path, output_file: Dict
+) -> None:
     """
     Parse the JSON cards and input them into the database
     :param input_file: AllSets.json file
     :param output_file: Output info dictionary
     """
-    if input_file.is_file():
-        LOGGER.info("Loading JSON into memory")
-        with input_file.open("r", encoding="utf8") as f:
-            json_data = json.load(f)
-        LOGGER.info("Building sets")
-        for set_code, set_data in json_data.items():
-            # Handle set insertion
-            LOGGER.info("Inserting set row for {}".format(set_code))
-            set_insert_values = handle_set_row_insertion(set_data)
-            sql_dict_insert(set_insert_values, "sets", output_file)
+    LOGGER.info("Building sets")
+    for set_code, set_data in json_data.items():
+        # Handle set insertion
+        LOGGER.info("Inserting set row for {}".format(set_code))
+        set_insert_values = handle_set_row_insertion(set_data)
+        sql_dict_insert(set_insert_values, "sets", output_file)
 
-            for card in set_data.get("cards"):
-                LOGGER.debug("Inserting card row for {}".format(card.get("name")))
-                card_attr: Dict[str, Any] = handle_card_row_insertion(card, set_code)
-                sql_insert_all_card_fields(card_attr, output_file)
+        for card in set_data.get("cards"):
+            LOGGER.debug("Inserting card row for {}".format(card.get("name")))
+            card_attr: Dict[str, Any] = handle_card_row_insertion(card, set_code)
+            sql_insert_all_card_fields(card_attr, output_file)
 
-            for token in set_data.get("tokens"):
-                LOGGER.debug("Inserting token row for {}".format(token.get("name")))
-                token_attr = handle_token_row_insertion(token, set_code)
-                sql_dict_insert(token_attr, "tokens", output_file)
+        for token in set_data.get("tokens"):
+            LOGGER.debug("Inserting token row for {}".format(token.get("name")))
+            token_attr = handle_token_row_insertion(token, set_code)
+            sql_dict_insert(token_attr, "tokens", output_file)
 
-            for language, translation in set_data.get("translations", {}).items():
-                LOGGER.debug("Inserting set_translation row for {}".format(language))
-                set_translation_attr = handle_set_translation_row_insertion(
-                    language, translation, set_code
-                )
-                sql_dict_insert(set_translation_attr, "set_translations", output_file)
-    elif input_file.is_dir():
-        for setFile in input_file.glob("*.json"):
-            LOGGER.info("Loading {} into memory...".format(setFile.name))
-            with setFile.open("r", encoding="utf8") as f:
-                set_data = json.load(f)
-            set_code = setFile.stem
-            LOGGER.info("Building set: {}".format(set_code))
-            set_insert_values = handle_set_row_insertion(set_data)
-            sql_dict_insert(set_insert_values, "sets", output_file)
-
-            for card in set_data.get("cards"):
-                LOGGER.debug("Inserting card row for {}".format(card.get("name")))
-                card_attr: Dict[str, Any] = handle_card_row_insertion(card, set_code)
-                sql_insert_all_card_fields(card_attr, output_file)
-
-            for token in set_data.get("tokens"):
-                LOGGER.debug("Inserting token row for {}".format(token.get("name")))
-                token_attr = handle_token_row_insertion(token, set_code)
-                sql_dict_insert(token_attr, "tokens", output_file)
-
-            for language, translation in set_data.get("translations", {}).items():
-                LOGGER.debug("Inserting set_translation row for {}".format(language))
-                set_translation_attr = handle_set_translation_row_insertion(
-                    language, translation, set_code
-                )
-                sql_dict_insert(set_translation_attr, "set_translations", output_file)
+        for language, translation in set_data.get("translations", {}).items():
+            LOGGER.debug("Inserting set_translation row for {}".format(language))
+            set_translation_attr = handle_set_translation_row_insertion(
+                language, translation, set_code
+            )
+            sql_dict_insert(set_translation_attr, "set_translations", output_file)
 
     if output_file["path"].suffix == ".sql":
         output_file["handle"].write("COMMIT;")
@@ -997,12 +686,11 @@ def modify_for_sql_insert(data: Any) -> Union[str, int, float, None]:
 
     return ""
 
+
 def modify_for_sql_file(data: Dict[str, Any]) -> Dict[str, Any]:
     for key in data.keys():
         if isinstance(data[key], str):
-            data[key] = (
-                "'" + data[key].replace("'", "''") + "'"
-            )
+            data[key] = "'" + data[key].replace("'", "''") + "'"
         if str(data[key]) == "False":
             data[key] = 0
         if str(data[key]) == "True":
@@ -1010,6 +698,7 @@ def modify_for_sql_file(data: Dict[str, Any]) -> Dict[str, Any]:
         if data[key] is None:
             data[key] = "NULL"
     return data
+
 
 def sql_dict_insert(data: Dict[str, Any], table: str, output_file: Dict) -> None:
     """
@@ -1040,4 +729,4 @@ def sql_dict_insert(data: Dict[str, Any], table: str, output_file: Dict) -> None
             cursor.execute(query, data)
     except:
         datastr = str(data)
-        LOGGER.warning(f"Failed to insert row in {table} with values {datastr}")
+        LOGGER.warning(f"Failed to insert row in '{table}' with values: {datastr}")
