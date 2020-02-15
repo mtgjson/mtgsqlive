@@ -34,7 +34,7 @@ def execute(input_file, output_file, extras=False) -> None:
                     "-- MTGJSON Version: {}".format(version),
                     "",
                     "START TRANSACTION;",
-                    "SET names 'utf8';",
+                    "SET names 'utf8mb4';",
                     "",
                     "",
                 )
@@ -104,6 +104,21 @@ def validate_io_streams(
     return True
 
 
+def get_sql_type(mixed, distro: str) -> str:
+    if isinstance(mixed, str) or isinstance(mixed, list) or isinstance(mixed, dict):
+        return "TEXT"
+    elif isinstance(mixed, bool):
+        if distro == "sqlite":
+            return "INTEGER NOT NULL DEFAULT 0"
+        else:
+            return "TINYINT(1) NOT NULL DEFAULT 0"
+    elif isinstance(mixed, int):
+        return "INTEGER"
+    elif isinstance(mixed, float):
+        return "FLOAT"
+    return "TEXT"
+
+
 def generate_sql_schema(json_data: Dict, output_file: Dict, distro: str) -> str:
     """
     Generate the SQLite DB schema from the JSON input
@@ -114,166 +129,203 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, distro: str) -> str:
         "sets": {},
         "cards": {},
         "tokens": {},
-        "prices": {},
-        "rulings": {},
-        "legalities": {},
-        "set_translations": {},
-        "foreign_data": {},
+        "prices": {
+            "price": {"type": "FLOAT" if distro == "sqlite" else "DECIMAL(8,2)"},
+            "type": {"type": "TEXT" if distro == "sqlite" else "ENUM"},
+            "date": {"type": "DATE"},
+        },
+        "rulings": {
+            "text": {"type": "TEXT"}, 
+            "date": {"type": "DATE"},
+        },
+        "legalities": {
+            "format": {"type": "TEXT" if distro == "sqlite" else "ENUM"}, 
+            "status": {"type": "TEXT" if distro == "sqlite" else "ENUM"},
+        },
+        "foreign_data": {
+            "flavorText": {"type": "TEXT"},
+            "language": {"type": "TEXT" if distro == "sqlite" else "ENUM"},
+            "multiverseId": {"type": "INTEGER"},
+            "name": {"type": "TEXT"},
+            "text": {"type": "TEXT"},
+            "type": {"type": "TEXT"},
+        },
+        "set_translations": {
+            "language": {"type": "TEXT" if distro == "sqlite" else "ENUM"},
+            "translation": {"type": "TEXT"},
+        },
     }
     indexes = {
         "cards": {"uuid": "(36) UNIQUE"},
         "tokens": {"uuid": "(36)"},
         "sets": {"code": "(8) UNIQUE"},
     }
-    # maxLengths = {}
+    enums = {
+        "sets": ["type"],
+        "prices": ["type"],
+        "foreign_data": ["language"],
+        "set_translations": ["language"],
+        "legalities": ["format", "status"],
+        "cards": ["borderColor", "frameEffect", "frameVersion", "layout", "rarity"],
+        "tokens": ["borderColor", "layout"],
+    }
     for setCode, setData in json_data.items():
+        # loop through each set property
         for setKey, setValue in setData.items():
             if setKey == "translations":
                 setKey = "set_translations"
+            # determine if the set property should be its own table
             if setKey in tables:
                 if setKey == "cards" or setKey == "tokens":
+                    # loop through each card/token property
                     for item in setValue:
                         for propKey, propValue in item.items():
                             if propKey == "foreignData":
                                 propKey = "foreign_data"
+                            # determine if the card/token property is a table
                             if propKey in tables:
-                                if propKey == "foreign_data":
-                                    if not tables["foreign_data"]:
-                                        tables["foreign_data"] = {
-                                            "flavorText": "TEXT",
-                                            "language": "TEXT",
-                                            "multiverseId": "INTEGER",
-                                            "name": "TEXT",
-                                            "text": "TEXT",
-                                            "type": "TEXT",
-                                        }
-                                if propKey == "legalities":
-                                    if not tables["legalities"]:
-                                        tables["legalities"] = {
-                                            "format": "TEXT",
-                                            "status": "TEXT",
-                                        }
-                                if propKey == "rulings":
-                                    if not tables["rulings"]:
-                                        tables["rulings"] = {
-                                            "text": "TEXT",
-                                            "date": "DATE",
-                                        }
-                                        if distro == "sqlite":
-                                            tables["rulings"]["date"] = "TEXT"
-                                if propKey == "prices":
-                                    if not tables["prices"]:
-                                        tables["prices"] = {
-                                            "price": "REAL",
-                                            "type": "TEXT",
-                                            "date": "DATE",
-                                        }
-                                        if distro == "sqlite":
-                                            tables["prices"]["date"] = "TEXT"
+                                # handle enum options
+                                if propKey in enums:
+                                    if propKey == "foreign_data":
+                                        if tables[propKey]["language"]["type"] == "ENUM":
+                                            for foreign in propValue:
+                                                if "options" in tables[propKey]["language"]:
+                                                    if not foreign["language"] in tables[propKey]["language"]["options"]:
+                                                        tables[propKey]["language"]["options"].append(foreign["language"])
+                                                else:
+                                                    tables[propKey]["language"]["options"] = [foreign["language"]]
+                                    elif propKey == "legalities":
+                                        if tables[propKey]["format"]["type"] == "ENUM":
+                                            for format in propValue.keys():
+                                                if "options" in tables[propKey]["format"]:
+                                                    if not format in tables[propKey]["format"]["options"]:
+                                                        tables[propKey]["format"]["options"].append(format)
+                                                else:
+                                                    tables[propKey]["format"]["options"] = [format]
+                                        if tables[propKey]["status"]["type"] == "ENUM":
+                                            for status in propValue.values():
+                                                if "options" in tables[propKey]["status"]:
+                                                    if not status in tables[propKey]["status"]["options"]:
+                                                        tables[propKey]["status"]["options"].append(status)
+                                                else:
+                                                    tables[propKey]["status"]["options"] = [status]
+                                    elif propKey == "prices":
+                                        if tables[propKey]["type"]["type"] == "ENUM":
+                                            for type in propValue.keys():
+                                                if "options" in tables[propKey]["type"]:
+                                                    if not type in tables[propKey]["type"]["options"]:
+                                                        tables[propKey]["type"]["options"].append(type)
+                                                else:
+                                                    tables[propKey]["type"]["options"] = [type]
+                                # create the 'uuid' foreign key for each reference table
                                 if not "uuid" in tables[propKey]:
                                     if distro == "sqlite":
-                                        tables[propKey][
-                                            "uuid"
-                                        ] = "TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
+                                        tables[propKey]["uuid"] = {
+                                            "type": "TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
+                                        }
                                     else:
-                                        tables[propKey][
-                                            "uuid"
-                                        ] = "VARCHAR(36) NOT NULL,\n    INDEX(uuid),\n    FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
-                            else:
-                                if not propKey in tables[setKey].keys():
-                                    if isinstance(propValue, str):
-                                        tables[setKey][propKey] = "TEXT"
-                                    if isinstance(propValue, int):
-                                        tables[setKey][propKey] = "INTEGER"
-                                    if isinstance(propValue, float):
-                                        tables[setKey][propKey] = "FLOAT"
-                                    if isinstance(propValue, bool):
-                                        tables[setKey][
-                                            propKey
-                                        ] = "INTEGER NOT NULL DEFAULT 0"
-                                    if isinstance(propValue, list):
-                                        tables[setKey][propKey] = "TEXT"
-                                    if isinstance(propValue, dict):
-                                        tables[setKey][propKey] = "TEXT"
+                                        tables[propKey]["uuid"] = {
+                                            "type": "CHAR(36) NOT NULL,\n    INDEX(uuid),\n    FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
+                                        }
+                            else: # 'cards' table properties
+                                # determine if the card property is already in the list
+                                if propKey in tables[setKey].keys():
+                                    if propKey in enums[setKey] and not distro == "sqlite":
+                                        if not propValue in tables[setKey][propKey]["options"]:
+                                            tables[setKey][propKey]["options"].append(propValue)
+                                else:
+                                    if propKey in enums[setKey] and not distro == "sqlite":
+                                        tables[setKey][propKey] = {"type": "ENUM", "options": [propValue]}
+                                    else:
+                                        # determine type of the property
+                                        tables[setKey][propKey] = {
+                                            "type": get_sql_type(propValue, distro)
+                                        }
+                                    # determine if the card property is an index
                                     if propKey in indexes[setKey]:
                                         if distro == "sqlite":
-                                            tables[setKey][propKey] += (
+                                            tables[setKey][propKey]["type"] += (
                                                 indexes[setKey][propKey] + " NOT NULL"
                                             )
                                         else:
-                                            tables[setKey][propKey] = (
-                                                "VARCHAR"
+                                            tables[setKey][propKey]["type"] = (
+                                                "CHAR"
                                                 + indexes[setKey][propKey]
                                                 + " NOT NULL"
                                             )
+
                 if setKey == "set_translations":
-                    if not tables["set_translations"]:
-                        tables["set_translations"] = {
-                            "language": "TEXT",
-                            "translation": "TEXT",
-                        }
+                    if tables[setKey]["language"]["type"] == "ENUM":
+                        if setValue:
+                            for language in setValue.keys():
+                                if not "options" in tables[setKey]["language"]:
+                                    tables[setKey]["language"]["options"] = [language]
+                                else:
+                                    if not language in tables[setKey]["language"]["options"]:
+                                        tables[setKey]["language"]["options"].append(language)
+                # add 'setCode' to each table that references 'sets'
                 if not "setCode" in tables[setKey]:
                     if distro == "sqlite":
-                        tables[setKey][
-                            "setCode"
-                        ] = "TEXT(8) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
+                        tables[setKey]["setCode"] = {
+                            "type": "TEXT(8) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
+                        }
                     else:
-                        tables[setKey][
-                            "setCode"
-                        ] = "VARCHAR(8) NOT NULL,\n    INDEX(setCode),\n    FOREIGN KEY (setCode) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
-            else:
-                if not setKey in tables["sets"].keys():
-                    if setKey == "releaseDate" and not distro == "sqlite":
-                        tables["sets"][setKey] = "DATE"
-                    elif isinstance(setValue, str):
-                        tables["sets"][setKey] = "TEXT"
-                    elif isinstance(setValue, int):
-                        tables["sets"][setKey] = "INTEGER"
-                    elif isinstance(setValue, float):
-                        tables["sets"][setKey] = "FLOAT"
-                    elif isinstance(setValue, bool):
-                        tables["sets"][setKey] = "INTEGER NOT NULL DEFAULT 0"
-                    elif isinstance(setValue, list):
-                        tables["sets"][setKey] = "TEXT"
-                    elif isinstance(setValue, dict):
-                        tables["sets"][setKey] = "TEXT"
+                        tables[setKey]["setCode"] = {
+                            "type": "VARCHAR(8) NOT NULL,\n    INDEX(setCode),\n    FOREIGN KEY (setCode) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
+                        }
+            else:  # 'sets' table properties
+                if setKey in tables["sets"].keys():
+                    # if the property type is enum add the value to list if necessary
+                    if setKey in enums["sets"] and not distro == "sqlite":
+                        if not setValue in tables["sets"][setKey]["options"]:
+                            tables["sets"][setKey]["options"].append(setValue)
+                else:
+                    # determine type of the set property
+                    if setKey in enums["sets"] and not distro == "sqlite":
+                        tables["sets"][setKey] = {"type": "ENUM", "options": [setValue]}
+                    elif setKey == "releaseDate":
+                        tables["sets"][setKey] = {"type": "DATE"}
+                    else:
+                        tables["sets"][setKey] = {
+                            "type": get_sql_type(setValue, distro)
+                        }
                     if setKey in indexes["sets"]:
                         if distro == "sqlite":
-                            tables["sets"][setKey] += (
+                            tables["sets"][setKey]["type"] += (
                                 indexes["sets"][setKey] + " NOT NULL"
                             )
                         else:
-                            tables["sets"][setKey] = (
+                            tables["sets"][setKey]["type"] = (
                                 "VARCHAR" + indexes["sets"][setKey] + " NOT NULL"
                             )
-    # extra tables
+
+    # add extra tables manually if necessary
     if output_file["useAllDeckFiles"]:
         tables["decks"] = {
-            "fileName": "TEXT",
-            "name": "TEXT",
-            "mainboard": "TEXT NOT NULL",
-            "sideboard": "TEXT",
-            "type": "TEXT",
+            "fileName": {"type": "TEXT"},
+            "name": {"type": "TEXT"},
+            "mainboard": {"type": "TEXT NOT NULL"},
+            "sideboard": {"type": "TEXT"},
+            "type": {"type": "TEXT"},
+            "releaseDate": {"type": "TEXT"},
+            "code": {
+                "type": "TEXT(8) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
+                if distro == "sqlite"
+                else "VARCHAR(8) NOT NULL,\n    INDEX(code),\n    FOREIGN KEY (code) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
+            },
         }
-        if distro == "sqlite":
-            tables["decks"]["releaseDate"] = "TEXT"
-            tables["decks"][
-                "code"
-            ] = "TEXT(8) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
-        else:
-            tables["decks"]["releaseDate"] = "DATE"
-            tables["decks"][
-                "code"
-            ] = "VARCHAR(8) NOT NULL,\n    INDEX(code),\n    FOREIGN KEY (code) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
     if output_file["useKeywords"]:
-        tables["keywords"] = {"word": "TEXT UNIQUE NOT NULL", "type": "TEXT NOT NULL"}
+        tables["keywords"] = {
+            "word": {"type": "TEXT UNIQUE NOT NULL"},
+            "type": {"type": "TEXT NOT NULL"},
+        }
     if output_file["useCardTypes"]:
         tables["types"] = {
-            "type": "TEXT UNIQUE NOT NULL",
-            "subTypes": "TEXT",
-            "supertypes": "TEXT",
+            "type": {"type": "TEXT UNIQUE NOT NULL"},
+            "subTypes": {"type": "TEXT"},
+            "supertypes": {"type": "TEXT"},
         }
-    # create query string
+    # create query string from dict
     q = ""
     for tableName, tableData in tables.items():
         q += f"CREATE TABLE `{tableName}` (\n"
@@ -282,7 +334,10 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, distro: str) -> str:
         else:
             q += "    id INTEGER PRIMARY KEY AUTO_INCREMENT,\n"
         for colName in sorted(tableData.keys()):
-            q += f"    {colName} {tableData[colName]},\n"
+            q += f"    {colName} {tableData[colName]['type']}"
+            if tableData[colName]["type"] == "ENUM":
+                q += "('" + "', '".join(tableData[colName]["options"]) + "')"
+            q += ",\n"
         if distro == "sqlite":
             q = q[:-2] + "\n);\n\n"
         else:
