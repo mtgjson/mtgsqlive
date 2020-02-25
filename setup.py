@@ -21,5 +21,5 @@ setuptools.setup(
     ],
     keywords="Magic: The Gathering, MTG, JSON, Card Games, Collectible, Trading Cards",
     packages=setuptools.find_packages(),
-    install_requires=["requests"],
+    install_requires=["requests","pandas"],
 )
