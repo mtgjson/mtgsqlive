@@ -103,6 +103,25 @@ def validate_io_streams(
 
     return True
 
+def get_query_from_dict(tables, distro):
+    q = ""
+    for tableName, tableData in tables.items():
+        q += f"CREATE TABLE `{tableName}` (\n"
+        if distro == "sqlite":
+            q += "    id INTEGER PRIMARY KEY AUTOINCREMENT,\n"
+        else:
+            q += "    id INTEGER PRIMARY KEY AUTO_INCREMENT,\n"
+        for colName in sorted(tableData.keys()):
+            q += f"    {colName} {tableData[colName]['type']}"
+            if tableData[colName]["type"] == "ENUM":
+                q += "('" + "', '".join(tableData[colName]["options"]) + "')"
+            q += ",\n"
+        if distro == "sqlite":
+            q = q[:-2] + "\n);\n\n"
+        else:
+            q = q[:-2] + "\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;\n\n"
+
+    return q
 
 def get_sql_type(mixed, distro: str) -> str:
     if isinstance(mixed, str) or isinstance(mixed, list) or isinstance(mixed, dict):
@@ -112,10 +131,10 @@ def get_sql_type(mixed, distro: str) -> str:
             return "INTEGER NOT NULL DEFAULT 0"
         else:
             return "TINYINT(1) NOT NULL DEFAULT 0"
-    elif isinstance(mixed, int):
-        return "INTEGER"
     elif isinstance(mixed, float):
         return "FLOAT"
+    elif isinstance(mixed, int):
+        return "INTEGER"
     return "TEXT"
 
 
@@ -325,25 +344,7 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, distro: str) -> str:
             "subTypes": {"type": "TEXT"},
             "supertypes": {"type": "TEXT"},
         }
-    # create query string from dict
-    q = ""
-    for tableName, tableData in tables.items():
-        q += f"CREATE TABLE `{tableName}` (\n"
-        if distro == "sqlite":
-            q += "    id INTEGER PRIMARY KEY AUTOINCREMENT,\n"
-        else:
-            q += "    id INTEGER PRIMARY KEY AUTO_INCREMENT,\n"
-        for colName in sorted(tableData.keys()):
-            q += f"    {colName} {tableData[colName]['type']}"
-            if tableData[colName]["type"] == "ENUM":
-                q += "('" + "', '".join(tableData[colName]["options"]) + "')"
-            q += ",\n"
-        if distro == "sqlite":
-            q = q[:-2] + "\n);\n\n"
-        else:
-            q = q[:-2] + "\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;\n\n"
-
-    return q
+    return get_query_from_dict(tables, distro)
 
 
 def build_sql_schema(json_data: Dict, output_file: Dict) -> None:
