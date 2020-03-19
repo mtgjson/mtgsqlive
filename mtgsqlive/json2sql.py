@@ -47,6 +47,10 @@ def execute(input_file, output_file, extras=False) -> None:
     build_sql_schema(json_data, output_file)
     parse_and_import_cards(json_data, input_file, output_file)
     parse_and_import_extras(input_file, output_file)
+    if output_file["path"].suffix == ".sql":
+        output_file["handle"].write("COMMIT;")
+    else:
+        output_file["handle"].commit()
     output_file["handle"].close()
 
 
@@ -396,11 +400,6 @@ def parse_and_import_cards(
             )
             sql_dict_insert(set_translation_attr, "set_translations", output_file)
 
-    if output_file["path"].suffix == ".sql":
-        output_file["handle"].write("COMMIT;")
-    else:
-        output_file["handle"].commit()
-
 
 def parse_and_import_extras(input_file: pathlib.Path, output_file: Dict) -> None:
     """
@@ -487,11 +486,6 @@ def parse_and_import_extras(input_file: pathlib.Path, output_file: Dict) -> None
                 "types",
                 output_file,
             )
-
-    if output_file["path"].suffix == ".sql":
-        output_file["handle"].write("COMMIT;")
-    else:
-        output_file["handle"].commit()
 
 
 def sql_insert_all_card_fields(
