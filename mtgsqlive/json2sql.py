@@ -57,7 +57,7 @@ def execute(input_file, output_file, extras=False) -> None:
 def getVersion(json_data: Dict) -> str:
     if "meta" in json_data:
         if "version" in json_data["meta"]:
-            return set_data["meta"]["version"]
+            return json_data["meta"]["version"]
     else:
         for set_code, set_data in json_data.items():
             if "meta" in set_data:
