@@ -55,10 +55,14 @@ def execute(input_file, output_file, extras=False) -> None:
 
 
 def getVersion(json_data: Dict) -> str:
-    for set_code, set_data in json_data.items():
-        if "meta" in set_data:
-            if "version" in set_data["meta"]:
-                return set_data["meta"]["version"]
+    if "meta" in json_data:
+        if "version" in json_data["meta"]:
+            return json_data["meta"]["version"]
+    else:
+        for set_code, set_data in json_data.items():
+            if "meta" in set_data:
+                if "version" in set_data["meta"]:
+                    return set_data["meta"]["version"]
     return "Unknown"
 
 
@@ -192,6 +196,8 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, distro: str) -> str:
         "cards": ["borderColor", "frameEffect", "frameVersion", "layout", "rarity"],
         "tokens": ["borderColor", "layout"],
     }
+    if "data" in json_data:
+        json_data = json_data["data"]
     for setCode, setData in json_data.items():
         # loop through each set property
         for setKey, setValue in setData.items():
@@ -377,6 +383,8 @@ def parse_and_import_cards(
     :param output_file: Output info dictionary
     """
     LOGGER.info("Building sets")
+    if "data" in json_data:
+        json_data = json_data["data"]
     for set_code, set_data in json_data.items():
         # Handle set insertion
         LOGGER.info("Inserting set row for {}".format(set_code))
