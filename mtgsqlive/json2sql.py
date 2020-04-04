@@ -120,6 +120,8 @@ def get_query_from_dict(tables, distro):
         else:
             q += "    id INTEGER PRIMARY KEY AUTO_INCREMENT,\n"
         for colName in sorted(tableData.keys()):
+            if tableData[colName]["type"] == "ENUM" and not "options" in tableData[colName]:
+                tableData[colName]["type"] = "TEXT"
             q += f"    {colName} {tableData[colName]['type']}"
             if tableData[colName]["type"] == "ENUM":
                 q += "('" + "', '".join(tableData[colName]["options"]) + "')"
