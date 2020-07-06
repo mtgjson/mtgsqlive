@@ -22,7 +22,7 @@ def execute(json_input, output_file, check_extras=False) -> None:
     """
     if not valid_input_output(json_input, output_file):
         exit(1)
-    check_extra_inputs(json_input, output_file, check_extras)
+    check_extra_inputs(json_input, output_file)
 
     LOGGER.info("Loading json file into memory")
     with json_input.open("r", encoding="utf8") as json_file:
@@ -68,11 +68,10 @@ def check_extra_inputs(input_file: pathlib.Path,
     for extra in extras:
         output_dir[extra] = False
 
-    LOGGER.info("Building using AllPrintings.json master file")
     if not check_extras:
         return 
     for extra in extras:
-        if input_file.parent.joinpath(extra).is_file():
+        if input_file.parent.joinpath(extra).is_file() or input_file.parent.joinpath(extra).is_dir():
             LOGGER.info("Building with " + extra + " supplement")
             output_dir[extra] = True
 
@@ -81,7 +80,7 @@ def build_sql_database(output_file: str, json_data: JsonDict) -> None:
     if output_file["path"].suffix == ".sql":
         version = get_version(json_data)
         output_file["handle"] = open(output_file["path"], "w", encoding="utf8")
-        # TODO: comment why this is done
+        # Create a file header and ensure utf8 encoding
         output_file["handle"].write(
             "\n".join(
                 (
@@ -141,28 +140,12 @@ def generate_sql_schema(json_data: Dict,
     :param json_data: JSON dictionary
     :param engine: target SQL engine
     """
-    # I know it's not the prettiest thing, but I've broken it
-    # down more than it was originally and added comments to at least give
-    # an idea of what it's doing. The problem is when I've tried to break
-    # it down even more, the amount of data I needed to pass back and forth
-    # between functions was so large it was eating resources and heavily
-    # increasing the runtime. It has to drill down so far into the json but
-    # be able to reference backwards that there is no good way to break it up
-    # (and I've tested a lot of ideas to no avail). We originally used a static
-    # table schema but every time we added/changed a property in the json it
-    # would break this script, so I created this function to automate the
-    # schema.
-
+    
+    version = get_version(json_data)
     schema = {
         "sets": {},
         "cards": {},
         "tokens": {},
-        "prices": {
-            "price": {"type": "FLOAT" if engine == "sqlite" else
-                      "DECIMAL(8,2)"},
-            "type": {"type": "TEXT" if engine == "sqlite" else "ENUM"},
-            "date": {"type": "DATE"},
-        },
         "rulings": {
             "text": {"type": "TEXT"},
             "date": {"type": "DATE"},
@@ -217,6 +200,14 @@ def generate_sql_schema(json_data: Dict,
                         for cardKey, cardValue in card.items():
                             if cardKey == "foreignData":
                                 cardKey = "foreign_data"
+                            # handle identifiers property
+                            if cardKey == "identifiers":
+                                for idKey, idValue in cardValue.items():
+                                    if not idKey in schema[setKey]:
+                                        schema[setKey][idKey] = {
+                                            "type": get_sql_type(idValue, engine)
+                                        }
+                                continue
                             # determine if the card/token property is a table
                             if cardKey in schema:
                                 # handle enum options
@@ -334,6 +325,14 @@ def generate_sql_schema(json_data: Dict,
                             )
 
     # add extra tables manually if necessary
+    if output_file["AllPrices.json"] or version.startswith("4"):
+        schema["prices"] = {
+            "uuid": { "type": "TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE" if engine == "sqlite" else "CHAR(36) NOT NULL,\n    INDEX(uuid),\n    FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE" },
+            "price": {"type": "FLOAT" if engine == "sqlite" else "DECIMAL(8,2)"},
+            "type": {"type": "TEXT" if engine == "sqlite" else "ENUM"},
+            "date": {"type": "DATE"},
+        }
+    
     if output_file["AllDeckFiles"]:
         schema["decks"] = {
             "fileName": {"type": "TEXT"},
@@ -480,7 +479,11 @@ def handle_card_row_insertion(card_data: JsonDict, set_name: str) -> JsonDict:
     for key, value in card_data.items():
         if key in card_skip_keys:
             continue
-        card_insert_values[key] = modify_for_sql_insert(value)
+        if key == "identifiers":
+            for idKey, idValue in value.items():
+                card_insert_values[idKey] = modify_for_sql_insert(idValue)
+        else:
+            card_insert_values[key] = modify_for_sql_insert(value)
 
     foreign_insert_values: List[JsonDict] = []
     if card_skip_keys[0] in card_data.keys():
@@ -544,7 +547,11 @@ def handle_token_row_insertion(token_data: JsonDict, set_name: str) -> JsonDict:
     """
     token_insert_values: JsonDict = {"setCode": set_name}
     for key, value in token_data.items():
-        token_insert_values[key] = modify_for_sql_insert(value)
+        if key == "identifiers":
+            for idKey, idValue in value.items():
+                token_insert_values[idKey] = modify_for_sql_insert(idValue)
+        else:
+            token_insert_values[key] = modify_for_sql_insert(value)
 
     return token_insert_values
 
