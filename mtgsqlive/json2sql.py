@@ -188,7 +188,7 @@ def generate_sql_schema(json_data: Dict,
     # https://www.mtgjson.com/files/AllPrintings.json
     # to see the json structure
     for setCode, setData in json_data.items():
-        # loop through the set properties, you can view the properties in:
+        # loop through the set properties
         for setKey, setValue in setData.items():
             if setKey == "translations":
                 setKey = "set_translations"

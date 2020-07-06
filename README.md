@@ -34,6 +34,6 @@ This system was built using *Python 3.7*, so we can only guarantee proper functi
 $ pip3 install -r requirements.txt 
 
 # usage: mtgsqlive [-h] -i file -o file 
-$ python3 -m mtgsqlive -i /path/to/AllSets.json -o /path/to/output.sqlite
+$ python3 -m mtgsqlive -i /path/to/AllPrintings.json -o /path/to/output.sqlite
 
 ```  
