@@ -22,7 +22,7 @@ def execute(json_input, output_file, check_extras=False) -> None:
     """
     if not valid_input_output(json_input, output_file):
         exit(1)
-    check_extra_inputs(json_input, output_file)
+    check_extra_inputs(json_input, output_file, check_extras)
 
     LOGGER.info("Loading json file into memory")
     with json_input.open("r", encoding="utf8") as json_file:
