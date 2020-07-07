@@ -22,7 +22,7 @@ def execute(json_input, output_file, check_extras=False) -> None:
     """
     if not valid_input_output(json_input, output_file):
         exit(1)
-    check_extra_inputs(json_input, output_file, check_extras)
+    check_extra_inputs(json_input, output_file)
 
     LOGGER.info("Loading json file into memory")
     with json_input.open("r", encoding="utf8") as json_file:
@@ -305,6 +305,13 @@ def generate_sql_schema(json_data: Dict,
                         if setValue not in schema["sets"][setKey]["options"]:
                             schema["sets"][setKey]["options"].append(setValue)
                 else:
+                    # handle boosters
+                    if setKey == "boosters":
+                        if engine == "sqlite":
+                            schema["sets"]["booster"] = {"type": "TEXT"}
+                        else:
+                            schema["sets"]["booster"] = {"type": "LONGTEXT"}
+                        continue
                     # determine type of the set property
                     if setKey in enums["sets"] and not engine == "sqlite":
                         schema["sets"][setKey] = {"type": "ENUM", "options": [setValue]}
