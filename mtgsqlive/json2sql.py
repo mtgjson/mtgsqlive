@@ -305,6 +305,13 @@ def generate_sql_schema(json_data: Dict,
                         if setValue not in schema["sets"][setKey]["options"]:
                             schema["sets"][setKey]["options"].append(setValue)
                 else:
+                    # handle boosters
+                    if setKey == "boosters":
+                        if engine == "sqlite":
+                            schema["sets"]["booster"] = {"type": "TEXT"}
+                        else:
+                            schema["sets"]["booster"] = {"type": "LONGTEXT"}
+                        continue
                     # determine type of the set property
                     if setKey in enums["sets"] and not engine == "sqlite":
                         schema["sets"][setKey] = {"type": "ENUM", "options": [setValue]}
