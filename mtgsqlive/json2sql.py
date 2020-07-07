@@ -306,7 +306,7 @@ def generate_sql_schema(json_data: Dict,
                             schema["sets"][setKey]["options"].append(setValue)
                 else:
                     # handle boosters
-                    if setKey == "boosters":
+                    if setKey == "booster":
                         if engine == "sqlite":
                             schema["sets"]["booster"] = {"type": "TEXT"}
                         else:
