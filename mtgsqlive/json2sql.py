@@ -332,6 +332,11 @@ def generate_sql_schema(json_data: Dict,
                             )
 
     # add extra tables manually if necessary
+    if version.startswith("5"):
+        schema["meta"] = {
+            "date": {"type": "DATE"},
+            "version": {"type": "TEXT"},
+        }
     if output_file["AllPrices.json"] or version.startswith("4"):
         schema["prices"] = {
             "uuid": { "type": "TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE" if engine == "sqlite" else "CHAR(36) NOT NULL,\n    INDEX(uuid),\n    FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE" },
@@ -422,6 +427,7 @@ def parse_and_import_cards(
     """
     LOGGER.info("Building sets")
     if "data" in json_data:
+        sql_dict_insert(json_data["meta"], "meta", output_file)
         json_data = json_data["data"]
     for set_code, set_data in json_data.items():
         LOGGER.info(f"Inserting set row for {set_code}")
