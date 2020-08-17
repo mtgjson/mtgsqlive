@@ -14,11 +14,11 @@ lly edit it to be correct. Once that is accomplished, we are then no longer depe
 
 MTGJSON and MTGSQlive are open sourced database creation and distribution tool for [*Magic: The Gathering*](https://magic.wizards.com/) cards, specifically in [JSON](https://json.org/) and [SQLite](https://www.sqlite.org/index.html) format.
 
-You can find our documentation with all properties [here](https://mtgjson.com/docs.html).
+You can find our documentation with all properties [here](https://mtgjson.com/data-models/).
 
 To provide feedback and/or bug reports, please [open a ticket](https://github.com/mtgjson/mtgsqlite/issues/new/) as it is the best way for us to communicate with the public.
 
-If you would like to join or assist the development of the project, you can [join us on Discord](https://discord.gg/Hgyg7GJ) to discuss things further.
+If you would like to join or assist the development of the project, you can [join us on Discord](https://mtgjson.com/discord) to discuss things further.
 
 # How To Use
 
