@@ -37,6 +37,12 @@ if __name__ == "__main__":
         action="store_true",
         required=False,
     )
+    parser.add_argument(
+        "-e",
+        help="SQL database engine ('postgres' or 'mysql'). Only used if output file has .sql extension.",
+        default="postgres",
+        required=False,
+    )
     args = parser.parse_args()
 
     # Define our I/O paths
@@ -59,6 +65,7 @@ if __name__ == "__main__":
             input_file,
             {"path": output_file["path"].joinpath("AllPrintings.sql"), "handle": None},
             args.x,
+            args.e,
         )
 
         logging.info("> Creating AllPrintings CSV components")
@@ -69,4 +76,4 @@ if __name__ == "__main__":
     elif str(input_file).endswith(".sqlite"):
         sql2csv.execute(input_file, output_file)
     else:
-        json2sql.execute(input_file, output_file, args.x)
+        json2sql.execute(input_file, output_file, args.x, args.e)
