@@ -78,7 +78,7 @@ def check_extra_inputs(input_file: pathlib.Path,
             output_dir[extra] = True
 
 
-def build_sql_database(output_file: str, json_data: JsonDict, engine: Engine) -> None:
+def build_sql_database(output_file: Dict, json_data: JsonDict, engine: Engine) -> None:
     if output_file["path"].suffix == ".sql":
         version = get_version(json_data)
         output_file["handle"] = open(output_file["path"], "w", encoding="utf8")
@@ -153,19 +153,23 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
             "date": {"type": "DATE"},
         },
         "legalities": {
-            "format": {"type": "legalities_format" if engine == "postgres" else "TEXT" if engine == "sqlite" else "ENUM"},
-            "status": {"type": "legalities_status" if engine == "postgres" else "TEXT" if engine == "sqlite" else "ENUM"},
+            "format": {
+                "type": "legalities_format" if engine == "postgres" else "TEXT" if engine == "sqlite" else "ENUM"},
+            "status": {
+                "type": "legalities_status" if engine == "postgres" else "TEXT" if engine == "sqlite" else "ENUM"},
         },
         "foreign_data": {
             "flavorText": {"type": "TEXT"},
-            "language": {"type": "foreign_data_language" if engine == "postgres" else "TEXT" if engine == "sqlite" else "ENUM"},
+            "language": {
+                "type": "foreign_data_language" if engine == "postgres" else "TEXT" if engine == "sqlite" else "ENUM"},
             "multiverseid": {"type": "INTEGER"},
             "name": {"type": "TEXT"},
             "text": {"type": "TEXT"},
             "type": {"type": "TEXT"},
         },
         "set_translations": {
-            "language": {"type": "set_translations_language" if engine == "postgres" else "TEXT" if engine == "sqlite" else "ENUM"},
+            "language": {
+                "type": "set_translations_language" if engine == "postgres" else "TEXT" if engine == "sqlite" else "ENUM"},
             "translation": {"type": "TEXT"},
         },
     }
@@ -218,8 +222,7 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
                                         if schema[cardKey]["language"]["type"] != "TEXT":
                                             for foreign in cardValue:
                                                 if "options" in schema[cardKey]["language"]:
-                                                    if foreign["language"] not in schema[cardKey]["language"][
-                                                            "options"]:
+                                                    if foreign["language"] not in schema[cardKey]["language"]["options"]:
                                                         schema[cardKey]["language"]["options"].append(
                                                             foreign["language"])
                                                 else:
@@ -270,7 +273,8 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
                                 else:
                                     if cardKey in enums[setKey]:
                                         if engine == "postgres":
-                                            schema[setKey][cardKey] = {"type": f"{setKey}_{cardKey}", "options": [cardValue]}
+                                            schema[setKey][cardKey] = {"type": f"{setKey}_{cardKey}",
+                                                                       "options": [cardValue]}
                                         if engine == "mysql":
                                             schema[setKey][cardKey] = {"type": "ENUM", "options": [cardValue]}
                                     else:
@@ -423,7 +427,8 @@ def get_query_from_dict(schema, engine: Engine):
         if engine == "postgres":
             for attribute in sorted(table_data.keys()):
                 if "options" in table_data[attribute]:
-                    q += f"CREATE TYPE {table_data[attribute]['type']} AS ENUM ('" + "', '".join(table_data[attribute]["options"]) + "');\n"
+                    q += f"CREATE TYPE {table_data[attribute]['type']} AS ENUM ('" + "', '".join(
+                        table_data[attribute]["options"]) + "');\n"
             q += f"CREATE TABLE \"{table_name}\" (\n"
         else:
             q += f"CREATE TABLE `{table_name}` (\n"
@@ -448,11 +453,7 @@ def get_query_from_dict(schema, engine: Engine):
     return q
 
 
-def parse_and_import_cards(
-        json_data: Dict,
-        input_file: pathlib.Path,
-        output_file: Dict,
-        engine: Engine) -> None:
+def parse_and_import_cards(json_data: Dict, input_file: pathlib.Path, output_file: Dict, engine: Engine) -> None:
     """
     Parse the JSON cards and input them into the database
 
@@ -807,7 +808,7 @@ def modify_for_sql_insert(data: Any, engine: Engine) -> Union[str, int, float, N
     Arrays and booleans can't be inserted, so we need to stringify
 
     :param data: Data to modify
-    :param data: SQL engine in use
+    :param engine: SQL engine in use
     :return: string value
     """
     if isinstance(data, (str, int, float)):
