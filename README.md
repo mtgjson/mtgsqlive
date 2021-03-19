@@ -7,7 +7,7 @@ Gitter via [![Gitter](https://img.shields.io/gitter/room/nwjs/nw.js.svg)](https:
 
 
 ### Goals
-The goals of this project are to extend the MTGJSONv4 protocols and give an option for pre-processed SQLite downloads.
+The goals of this project are to extend the MTGJSONv5 protocols and give an option for pre-processed SQLite downloads.
 lly edit it to be correct. Once that is accomplished, we are then no longer dependent on them for card data, except for rullings.
 
 # About Us
