@@ -324,6 +324,13 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
                         if setValue not in schema["sets"][setKey]["options"]:
                             schema["sets"][setKey]["options"].append(setValue)
                 else:
+                    # handle sealed product
+                    if setKey == "sealedProduct":
+                        if engine == "sqlite" or engine == "postgres":
+                            schema["sets"]["sealedProduct"] = {"type": "TEXT"}
+                        else:
+                            schema["sets"]["sealedProduct"] = {"type": "LONGTEXT"}
+                        continue
                     # handle boosters
                     if setKey == "booster":
                         if engine == "sqlite" or engine == "postgres":
@@ -818,10 +825,8 @@ def modify_for_sql_insert(data: Any, engine: Engine) -> Union[str, int, float, N
     if not data:
         return None
 
-    if isinstance(data, list) and engine == "postgres":
-        return "{\"" + "\",\"".join(data) + "\"}"
-    elif isinstance(data, list) and data and isinstance(data[0], str):
-        return ",".join(data)
+    if isinstance(data, list) and data and isinstance(data[0], str):
+        return "{\"" + "\",\"".join(data) + "\"}" if engine == "postgres" else ",".join(data)
 
     if isinstance(data, bool):
         return data if engine == "postgres" else int(data)
