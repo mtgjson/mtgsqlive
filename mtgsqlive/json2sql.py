@@ -410,7 +410,7 @@ def get_sql_type(mixed, engine: Engine) -> str:
     The type depends on the SQL engine in some cases
     """
     if isinstance(mixed, list) and engine == "postgres":
-        return "TEXT[]"
+        return "JSONB"
     elif isinstance(mixed, str) or isinstance(mixed, list) or isinstance(mixed, dict):
         return "TEXT"
     elif isinstance(mixed, bool):
@@ -826,7 +826,7 @@ def modify_for_sql_insert(data: Any, engine: Engine) -> Union[str, int, float, N
         return None
 
     if isinstance(data, list) and data and isinstance(data[0], str):
-        return "{\"" + "\",\"".join(data) + "\"}" if engine == "postgres" else ",".join(data)
+        return "[\"" + "\",\"".join(data) + "\"]" if engine == "postgres" else ",".join(data)
 
     if isinstance(data, bool):
         return data if engine == "postgres" else int(data)
