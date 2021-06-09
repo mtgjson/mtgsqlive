@@ -30,10 +30,10 @@ To produce a Postgres-ready output, ensure the output file has a `.sql` extensio
 
 ```sh
 # Install dependencies
-$ pip install -r requirements.txt 
+pip install -r requirements.txt 
 
 # usage: mtgsqlive [-h] -i file -o file 
-$ python -m mtgsqlive -i /path/to/AllPrintings.json -o /path/to/output.sql
+python -m mtgsqlive -i /path/to/AllPrintings.json -o /path/to/output.sql
 ```
 
 ### Hasura
@@ -57,10 +57,10 @@ If the output file has a `.sql` extension, the destination engine will default t
 
 ```sh
 # Install dependencies
-$ pip install -r requirements.txt 
+pip install -r requirements.txt 
 
 # usage: mtgsqlive [-h] -i file -o file 
-$ python -m mtgsqlive -i /path/to/AllPrintings.json -o /path/to/output.sql -e mysql
+python -m mtgsqlive -i /path/to/AllPrintings.json -o /path/to/output.sql -e mysql
 ```  
 
 ## SQLite
@@ -72,8 +72,8 @@ To create a SQLite database, use a `.sqlite` extension for the output file argum
 
 ```sh
 # Install dependencies
-$ pip install -r requirements.txt 
+pip install -r requirements.txt 
 
 # usage: mtgsqlive [-h] -i file -o file 
-$ python -m mtgsqlive -i /path/to/AllPrintings.json -o /path/to/output.sqlite
+python -m mtgsqlive -i /path/to/AllPrintings.json -o /path/to/output.sqlite
 ```  
