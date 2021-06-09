@@ -14,12 +14,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-i",
+        "--input-file",
         help="input source (AllPrintings.json)",
         required=True,
         metavar="fileIn",
     )
     parser.add_argument(
         "-o",
+        "--output-file",
         help="output folder (outputs/)",
         default="outputs",
         required=True,
@@ -27,25 +29,29 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-a",
+        "--all",
         help="build all types (SQLite, SQL, CSV)",
         action="store_true",
         required=False,
     )
     parser.add_argument(
         "-x",
+        "--extra",
         help="check for extra input files",
         action="store_true",
         required=False,
     )
     parser.add_argument(
         "-e",
-        help="SQL database engine ('postgres' or 'mysql') for .sql output",
-        default="postgres",
+        "--engine",
+        help="database engine ('postgres' or 'mysql') for .sql output",
+        default="mysql",
         required=False,
         metavar="engine",
     )
     parser.add_argument(
         "-v",
+        "--verbose",
         help="verbose output",
         action="store_true",
         required=False,

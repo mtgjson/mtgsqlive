@@ -6,7 +6,7 @@ import setuptools
 # Necessary for TOX
 setuptools.setup(
     name="MTGSQLive",
-    version=0.3,
+    version=0.2,
     author="Zach Halpern",
     author_email="zach@mtgjson.com",
     url="https://github.com/mtgjson/mtgsqlive/",
