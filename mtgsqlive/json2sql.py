@@ -254,15 +254,18 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
                                 if "uuid" not in schema[cardKey]:
                                     if engine == "sqlite":
                                         schema[cardKey]["uuid"] = {
-                                            "type": "TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
+                                            "type": "TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE "
+                                                    "CASCADE "
                                         }
                                     if engine == "postgres":
                                         schema[cardKey]["uuid"] = {
-                                            "type": "CHAR(36) NOT NULL,\n    FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
+                                            "type": "CHAR(36) NOT NULL,\n    FOREIGN KEY (uuid) REFERENCES cards("
+                                                    "uuid) ON UPDATE CASCADE ON DELETE CASCADE "
                                         }
                                     else:
                                         schema[cardKey]["uuid"] = {
-                                            "type": "CHAR(36) NOT NULL,\n    INDEX(uuid),\n    FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
+                                            "type": "CHAR(36) NOT NULL,\n    INDEX(uuid),\n    FOREIGN KEY (uuid) "
+                                                    "REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE "
                                         }
                             else:  # 'cards' table properties
                                 # determine if the card property is already in the list
@@ -311,11 +314,13 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
                         }
                     if engine == "postgres":
                         schema[setKey]["setCode"] = {
-                            "type": "VARCHAR(8) NOT NULL,\n    FOREIGN KEY (setCode) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
+                            "type": "VARCHAR(8) NOT NULL,\n    FOREIGN KEY (setCode) REFERENCES sets(code) ON UPDATE "
+                                    "CASCADE ON DELETE CASCADE "
                         }
                     else:
                         schema[setKey]["setCode"] = {
-                            "type": "VARCHAR(8) NOT NULL,\n    INDEX(setCode),\n    FOREIGN KEY (setCode) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
+                            "type": "VARCHAR(8) NOT NULL,\n    INDEX(setCode),\n    FOREIGN KEY (setCode) REFERENCES "
+                                    "sets(code) ON UPDATE CASCADE ON DELETE CASCADE "
                         }
             else:  # 'sets' table properties
                 if setKey in schema["sets"].keys():
@@ -326,15 +331,19 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
                 else:
                     # handle sealed product
                     if setKey == "sealedProduct":
-                        if engine == "sqlite" or engine == "postgres":
+                        if engine == "sqlite":
                             schema["sets"]["sealedProduct"] = {"type": "TEXT"}
+                        elif engine == "postgres":
+                            schema["sets"]["sealedProduct"] = {"type": "JSONB"}
                         else:
                             schema["sets"]["sealedProduct"] = {"type": "LONGTEXT"}
                         continue
                     # handle boosters
                     if setKey == "booster":
-                        if engine == "sqlite" or engine == "postgres":
+                        if engine == "sqlite":
                             schema["sets"]["booster"] = {"type": "TEXT"}
+                        elif engine == "postgres":
+                            schema["sets"]["booster"] = {"type": "JSONB"}
                         else:
                             schema["sets"]["booster"] = {"type": "LONGTEXT"}
                         continue
@@ -369,7 +378,9 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
     if output_file["AllPrices.json"] or version.startswith("4"):
         schema["prices"] = {
             "uuid": {
-                "type": "TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE" if engine == "sqlite" else "CHAR(36) NOT NULL,\n    INDEX(uuid),\n    FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"},
+                "type": "TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE" if engine == "sqlite"
+                else "CHAR(36) NOT NULL,\n    INDEX(uuid),\n    FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE "
+                     "CASCADE ON DELETE CASCADE"},
             "price": {"type": "FLOAT" if engine == "sqlite" else "DECIMAL(8,2)"},
             "type": {"type": "TEXT" if engine == "sqlite" else "ENUM"},
             "date": {"type": "DATE"},
@@ -384,9 +395,9 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
             "type": {"type": "TEXT"},
             "releaseDate": {"type": "TEXT"},
             "code": {
-                "type": "TEXT(8) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
-                if engine == "sqlite"
-                else "VARCHAR(8) NOT NULL,\n    INDEX(code),\n    FOREIGN KEY (code) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
+                "type": "TEXT(8) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE" if engine == "sqlite"
+                else "VARCHAR(8) NOT NULL,\n    INDEX(code),\n    FOREIGN KEY (code) REFERENCES sets(code) ON UPDATE "
+                     "CASCADE ON DELETE CASCADE "
             },
         }
     if output_file["Keywords.json"]:
@@ -409,7 +420,7 @@ def get_sql_type(mixed, engine: Engine) -> str:
 
     The type depends on the SQL engine in some cases
     """
-    if isinstance(mixed, list) and engine == "postgres":
+    if (isinstance(mixed, list) or isinstance(mixed, dict)) and engine == "postgres":
         return "JSONB"
     elif isinstance(mixed, str) or isinstance(mixed, list) or isinstance(mixed, dict):
         return "TEXT"
@@ -825,14 +836,14 @@ def modify_for_sql_insert(data: Any, engine: Engine) -> Union[str, int, float, N
     if not data:
         return None
 
-    if isinstance(data, list) and data and isinstance(data[0], str):
-        return "[\"" + "\",\"".join(data) + "\"]" if engine == "postgres" else ",".join(data)
+    if isinstance(data, list) and data and isinstance(data[0], str) and engine != "postgres":
+        return ",".join(data)
+
+    if isinstance(data, list) or isinstance(data, dict):
+        return json.dumps(data)
 
     if isinstance(data, bool):
         return data if engine == "postgres" else int(data)
-
-    if isinstance(data, dict):
-        return str(data)
 
     return ""
 

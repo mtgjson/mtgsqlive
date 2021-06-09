@@ -26,21 +26,28 @@ if __name__ == "__main__":
         metavar="fileOut",
     )
     parser.add_argument(
-        "--all",
-        help="Build all types (SQLite, SQL, CSV)",
+        "-a",
+        help="build all types (SQLite, SQL, CSV)",
         action="store_true",
         required=False,
     )
     parser.add_argument(
         "-x",
-        help="Check for extra input files",
+        help="check for extra input files",
         action="store_true",
         required=False,
     )
     parser.add_argument(
         "-e",
-        help="SQL database engine ('postgres' or 'mysql'). Only used if output file has .sql extension.",
+        help="SQL database engine ('postgres' or 'mysql') for .sql output",
         default="postgres",
+        required=False,
+        metavar="engine",
+    )
+    parser.add_argument(
+        "-v",
+        help="verbose output",
+        action="store_true",
         required=False,
     )
     args = parser.parse_args()
@@ -49,7 +56,10 @@ if __name__ == "__main__":
     input_file = pathlib.Path(args.i).expanduser()
     output_file = {"path": pathlib.Path(args.o).expanduser().absolute(), "handle": None}
 
-    if args.all:
+    if args.v:
+        logging.getLogger().setLevel(logging.DEBUG)
+
+    if args.a:
         logging.info("> Creating AllPrintings.sqlite")
         json2sql.execute(
             input_file,
