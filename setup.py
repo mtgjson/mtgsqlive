@@ -1,4 +1,4 @@
-"""Installation setup for MTGSQLite."""
+"""Installation setup for MTGSQLive."""
 
 import pathlib
 import setuptools
