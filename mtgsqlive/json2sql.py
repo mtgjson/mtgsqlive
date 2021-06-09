@@ -1,5 +1,5 @@
 """
-Convert MTGJSON v4 to SQLite
+Convert MTGJSON v5.1 to SQLite
 """
 
 import json
@@ -7,14 +7,16 @@ import logging
 import pathlib
 import sqlite3
 import time
-from typing import Any, Dict, List, Union, Literal
+from typing import Any, Dict, List, Literal, Union
 
 LOGGER = logging.getLogger(__name__)
 JsonDict = Dict[str, any]
 Engine = Literal["postgres", "mysql", "sqlite"]
 
 
-def execute(json_input, output_file, check_extras=False, engine: Engine = "postgres") -> None:
+def execute(
+    json_input, output_file, check_extras=False, engine: Engine = "postgres"
+) -> None:
     """Main function to handle the logic
 
     :param json_input: Input file (JSON)
@@ -31,13 +33,12 @@ def execute(json_input, output_file, check_extras=False, engine: Engine = "postg
         json_data = json.load(json_file)
     build_sql_database(output_file, json_data, engine)
     build_sql_schema(json_data, output_file, engine)
-    parse_and_import_cards(json_data, json_input, output_file, engine)
+    parse_and_import_cards(json_data, output_file, engine)
     parse_and_import_extras(json_input, output_file, engine)
     commit_changes_and_close_db(output_file)
 
 
-def valid_input_output(input_file: pathlib.Path,
-                       output_dir: Dict) -> bool:
+def valid_input_output(input_file: pathlib.Path, output_dir: Dict) -> bool:
     """
     Ensure I/O paths are valid and clean for program
     """
@@ -48,24 +49,21 @@ def valid_input_output(input_file: pathlib.Path,
     # Create the output directory if it doesn't exist
     output_dir["path"].parent.mkdir(exist_ok=True)
     if output_dir["path"].is_file():
-        LOGGER.warning(f"Output path {output_dir['path']} already exists, "
-                       "moving it")
+        LOGGER.warning(f"Output path {output_dir['path']} already exists, " "moving it")
         # Backup the existing file to another file with .old extension
         output_dir["path"].replace(
-            output_dir["path"].parent.joinpath(
-                output_dir["path"].name + ".old"
-            )
+            output_dir["path"].parent.joinpath(output_dir["path"].name + ".old")
         )
     return True
 
 
-def check_extra_inputs(input_file: pathlib.Path,
-                       output_dir: Dict, check_extras=False) -> None:
+def check_extra_inputs(
+    input_file: pathlib.Path, output_dir: Dict, check_extras=False
+) -> None:
     """
     Check if there are more json files to convert to sql
     """
-    extras = ["AllPrices.json", "AllDeckFiles",
-              "Keywords.json", "CardTypes.json"]
+    extras = ["AllPrices.json", "AllDeckFiles", "Keywords.json", "CardTypes.json"]
 
     for extra in extras:
         output_dir[extra] = False
@@ -73,7 +71,10 @@ def check_extra_inputs(input_file: pathlib.Path,
     if not check_extras:
         return
     for extra in extras:
-        if input_file.parent.joinpath(extra).is_file() or input_file.parent.joinpath(extra).is_dir():
+        if (
+            input_file.parent.joinpath(extra).is_file()
+            or input_file.parent.joinpath(extra).is_dir()
+        ):
             LOGGER.info("Building with " + extra + " supplement")
             output_dir[extra] = True
 
@@ -154,14 +155,29 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
         },
         "legalities": {
             "format": {
-                "type": "legalities_format" if engine == "postgres" else "TEXT" if engine == "sqlite" else "ENUM"},
+                "type": "legalities_format"
+                if engine == "postgres"
+                else "TEXT"
+                if engine == "sqlite"
+                else "ENUM"
+            },
             "status": {
-                "type": "legalities_status" if engine == "postgres" else "TEXT" if engine == "sqlite" else "ENUM"},
+                "type": "legalities_status"
+                if engine == "postgres"
+                else "TEXT"
+                if engine == "sqlite"
+                else "ENUM"
+            },
         },
         "foreign_data": {
             "flavorText": {"type": "TEXT"},
             "language": {
-                "type": "foreign_data_language" if engine == "postgres" else "TEXT" if engine == "sqlite" else "ENUM"},
+                "type": "foreign_data_language"
+                if engine == "postgres"
+                else "TEXT"
+                if engine == "sqlite"
+                else "ENUM"
+            },
             "multiverseid": {"type": "INTEGER"},
             "name": {"type": "TEXT"},
             "text": {"type": "TEXT"},
@@ -169,7 +185,12 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
         },
         "set_translations": {
             "language": {
-                "type": "set_translations_language" if engine == "postgres" else "TEXT" if engine == "sqlite" else "ENUM"},
+                "type": "set_translations_language"
+                if engine == "postgres"
+                else "TEXT"
+                if engine == "sqlite"
+                else "ENUM"
+            },
             "translation": {"type": "TEXT"},
         },
     }
@@ -184,8 +205,7 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
         "foreign_data": ["language"],
         "set_translations": ["language"],
         "legalities": ["format", "status"],
-        "cards": ["borderColor", "frameEffect", "frameVersion", "layout",
-                  "rarity"],
+        "cards": ["borderColor", "frameEffect", "frameVersion", "layout", "rarity"],
         "tokens": ["borderColor", "layout"],
     }
     if "data" in json_data:
@@ -219,67 +239,127 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
                                 # handle enum options
                                 if cardKey in enums:
                                     if cardKey == "foreign_data":
-                                        if schema[cardKey]["language"]["type"] != "TEXT":
+                                        if (
+                                            schema[cardKey]["language"]["type"]
+                                            != "TEXT"
+                                        ):
                                             for foreign in cardValue:
-                                                if "options" in schema[cardKey]["language"]:
-                                                    if foreign["language"] not in schema[cardKey]["language"]["options"]:
-                                                        schema[cardKey]["language"]["options"].append(
-                                                            foreign["language"])
+                                                if (
+                                                    "options"
+                                                    in schema[cardKey]["language"]
+                                                ):
+                                                    if (
+                                                        foreign["language"]
+                                                        not in schema[cardKey][
+                                                            "language"
+                                                        ]["options"]
+                                                    ):
+                                                        schema[cardKey]["language"][
+                                                            "options"
+                                                        ].append(foreign["language"])
                                                 else:
-                                                    schema[cardKey]["language"]["options"] = [foreign["language"]]
+                                                    schema[cardKey]["language"][
+                                                        "options"
+                                                    ] = [foreign["language"]]
                                     elif cardKey == "legalities":
                                         if schema[cardKey]["format"]["type"] != "TEXT":
                                             for format in cardValue.keys():
-                                                if "options" in schema[cardKey]["format"]:
-                                                    if format not in schema[cardKey]["format"]["options"]:
-                                                        schema[cardKey]["format"]["options"].append(format)
+                                                if (
+                                                    "options"
+                                                    in schema[cardKey]["format"]
+                                                ):
+                                                    if (
+                                                        format
+                                                        not in schema[cardKey][
+                                                            "format"
+                                                        ]["options"]
+                                                    ):
+                                                        schema[cardKey]["format"][
+                                                            "options"
+                                                        ].append(format)
                                                 else:
-                                                    schema[cardKey]["format"]["options"] = [format]
+                                                    schema[cardKey]["format"][
+                                                        "options"
+                                                    ] = [format]
                                         if schema[cardKey]["status"]["type"] != "TEXT":
                                             for status in cardValue.values():
-                                                if "options" in schema[cardKey]["status"]:
-                                                    if status not in schema[cardKey]["status"]["options"]:
-                                                        schema[cardKey]["status"]["options"].append(status)
+                                                if (
+                                                    "options"
+                                                    in schema[cardKey]["status"]
+                                                ):
+                                                    if (
+                                                        status
+                                                        not in schema[cardKey][
+                                                            "status"
+                                                        ]["options"]
+                                                    ):
+                                                        schema[cardKey]["status"][
+                                                            "options"
+                                                        ].append(status)
                                                 else:
-                                                    schema[cardKey]["status"]["options"] = [status]
+                                                    schema[cardKey]["status"][
+                                                        "options"
+                                                    ] = [status]
                                     elif cardKey == "prices":
                                         if schema[cardKey]["type"]["type"] != "TEXT":
                                             for type in cardValue.keys():
                                                 if "options" in schema[cardKey]["type"]:
-                                                    if type not in schema[cardKey]["type"]["options"]:
-                                                        schema[cardKey]["type"]["options"].append(type)
+                                                    if (
+                                                        type
+                                                        not in schema[cardKey]["type"][
+                                                            "options"
+                                                        ]
+                                                    ):
+                                                        schema[cardKey]["type"][
+                                                            "options"
+                                                        ].append(type)
                                                 else:
-                                                    schema[cardKey]["type"]["options"] = [type]
+                                                    schema[cardKey]["type"][
+                                                        "options"
+                                                    ] = [type]
                                 # create the 'uuid' foreign key for each reference table
                                 if "uuid" not in schema[cardKey]:
                                     if engine == "sqlite":
                                         schema[cardKey]["uuid"] = {
                                             "type": "TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE "
-                                                    "CASCADE "
+                                            "CASCADE "
                                         }
                                     if engine == "postgres":
                                         schema[cardKey]["uuid"] = {
                                             "type": "CHAR(36) NOT NULL,\n    FOREIGN KEY (uuid) REFERENCES cards("
-                                                    "uuid) ON UPDATE CASCADE ON DELETE CASCADE "
+                                            "uuid) ON UPDATE CASCADE ON DELETE CASCADE "
                                         }
                                     else:
                                         schema[cardKey]["uuid"] = {
                                             "type": "CHAR(36) NOT NULL,\n    INDEX(uuid),\n    FOREIGN KEY (uuid) "
-                                                    "REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE "
+                                            "REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE "
                                         }
                             else:  # 'cards' table properties
                                 # determine if the card property is already in the list
                                 if cardKey in schema[setKey].keys():
-                                    if cardKey in enums[setKey] and not engine == "sqlite":
-                                        if cardValue not in schema[setKey][cardKey]["options"]:
-                                            schema[setKey][cardKey]["options"].append(cardValue)
+                                    if (
+                                        cardKey in enums[setKey]
+                                        and not engine == "sqlite"
+                                    ):
+                                        if (
+                                            cardValue
+                                            not in schema[setKey][cardKey]["options"]
+                                        ):
+                                            schema[setKey][cardKey]["options"].append(
+                                                cardValue
+                                            )
                                 else:
                                     if cardKey in enums[setKey]:
                                         if engine == "postgres":
-                                            schema[setKey][cardKey] = {"type": f"{setKey}_{cardKey}",
-                                                                       "options": [cardValue]}
+                                            schema[setKey][cardKey] = {
+                                                "type": f"{setKey}_{cardKey}",
+                                                "options": [cardValue],
+                                            }
                                         if engine == "mysql":
-                                            schema[setKey][cardKey] = {"type": "ENUM", "options": [cardValue]}
+                                            schema[setKey][cardKey] = {
+                                                "type": "ENUM",
+                                                "options": [cardValue],
+                                            }
                                     else:
                                         # determine type of the property
                                         schema[setKey][cardKey] = {
@@ -289,13 +369,13 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
                                     if cardKey in indexes[setKey]:
                                         if engine == "sqlite":
                                             schema[setKey][cardKey]["type"] += (
-                                                    indexes[setKey][cardKey] + " NOT NULL"
+                                                indexes[setKey][cardKey] + " NOT NULL"
                                             )
                                         else:
                                             schema[setKey][cardKey]["type"] = (
-                                                    "CHAR"
-                                                    + indexes[setKey][cardKey]
-                                                    + " NOT NULL"
+                                                "CHAR"
+                                                + indexes[setKey][cardKey]
+                                                + " NOT NULL"
                                             )
                 if setKey == "set_translations":
                     if schema[setKey]["language"]["type"] != "TEXT":
@@ -304,8 +384,13 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
                                 if "options" not in schema[setKey]["language"]:
                                     schema[setKey]["language"]["options"] = [language]
                                 else:
-                                    if language not in schema[setKey]["language"]["options"]:
-                                        schema[setKey]["language"]["options"].append(language)
+                                    if (
+                                        language
+                                        not in schema[setKey]["language"]["options"]
+                                    ):
+                                        schema[setKey]["language"]["options"].append(
+                                            language
+                                        )
                 # add 'setCode' to each table that references 'sets'
                 if "setCode" not in schema[setKey]:
                     if engine == "sqlite":
@@ -315,12 +400,12 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
                     if engine == "postgres":
                         schema[setKey]["setCode"] = {
                             "type": "VARCHAR(8) NOT NULL,\n    FOREIGN KEY (setCode) REFERENCES sets(code) ON UPDATE "
-                                    "CASCADE ON DELETE CASCADE "
+                            "CASCADE ON DELETE CASCADE "
                         }
                     else:
                         schema[setKey]["setCode"] = {
                             "type": "VARCHAR(8) NOT NULL,\n    INDEX(setCode),\n    FOREIGN KEY (setCode) REFERENCES "
-                                    "sets(code) ON UPDATE CASCADE ON DELETE CASCADE "
+                            "sets(code) ON UPDATE CASCADE ON DELETE CASCADE "
                         }
             else:  # 'sets' table properties
                 if setKey in schema["sets"].keys():
@@ -350,9 +435,15 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
                     # determine type of the set property
                     if setKey in enums["sets"]:
                         if engine == "postgres":
-                            schema["sets"][setKey] = {"type": f"sets_{setKey}", "options": [setValue]}
+                            schema["sets"][setKey] = {
+                                "type": f"sets_{setKey}",
+                                "options": [setValue],
+                            }
                         if engine == "mysql":
-                            schema["sets"][setKey] = {"type": "ENUM", "options": [setValue]}
+                            schema["sets"][setKey] = {
+                                "type": "ENUM",
+                                "options": [setValue],
+                            }
                     elif setKey == "releaseDate":
                         schema["sets"][setKey] = {"type": "DATE"}
                     else:
@@ -362,11 +453,11 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
                     if setKey in indexes["sets"]:
                         if engine == "sqlite":
                             schema["sets"][setKey]["type"] += (
-                                    indexes["sets"][setKey] + " NOT NULL"
+                                indexes["sets"][setKey] + " NOT NULL"
                             )
                         else:
                             schema["sets"][setKey]["type"] = (
-                                    "VARCHAR" + indexes["sets"][setKey] + " NOT NULL"
+                                "VARCHAR" + indexes["sets"][setKey] + " NOT NULL"
                             )
 
     # add extra tables manually if necessary
@@ -378,9 +469,11 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
     if output_file["AllPrices.json"] or version.startswith("4"):
         schema["prices"] = {
             "uuid": {
-                "type": "TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE" if engine == "sqlite"
+                "type": "TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
+                if engine == "sqlite"
                 else "CHAR(36) NOT NULL,\n    INDEX(uuid),\n    FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE "
-                     "CASCADE ON DELETE CASCADE"},
+                "CASCADE ON DELETE CASCADE"
+            },
             "price": {"type": "FLOAT" if engine == "sqlite" else "DECIMAL(8,2)"},
             "type": {"type": "TEXT" if engine == "sqlite" else "ENUM"},
             "date": {"type": "DATE"},
@@ -395,9 +488,10 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
             "type": {"type": "TEXT"},
             "releaseDate": {"type": "TEXT"},
             "code": {
-                "type": "TEXT(8) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE" if engine == "sqlite"
+                "type": "TEXT(8) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
+                if engine == "sqlite"
                 else "VARCHAR(8) NOT NULL,\n    INDEX(code),\n    FOREIGN KEY (code) REFERENCES sets(code) ON UPDATE "
-                     "CASCADE ON DELETE CASCADE "
+                "CASCADE ON DELETE CASCADE "
             },
         }
     if output_file["Keywords.json"]:
@@ -445,9 +539,12 @@ def get_query_from_dict(schema, engine: Engine):
         if engine == "postgres":
             for attribute in sorted(table_data.keys()):
                 if "options" in table_data[attribute]:
-                    q += f"CREATE TYPE {table_data[attribute]['type']} AS ENUM ('" + "', '".join(
-                        table_data[attribute]["options"]) + "');\n"
-            q += f"CREATE TABLE \"{table_name}\" (\n"
+                    q += (
+                        f"CREATE TYPE {table_data[attribute]['type']} AS ENUM ('"
+                        + "', '".join(table_data[attribute]["options"])
+                        + "');\n"
+                    )
+            q += f'CREATE TABLE "{table_name}" (\n'
         else:
             q += f"CREATE TABLE `{table_name}` (\n"
         if engine == "postgres":
@@ -457,7 +554,10 @@ def get_query_from_dict(schema, engine: Engine):
         else:
             q += "    id INTEGER PRIMARY KEY AUTO_INCREMENT,\n"
         for attribute in sorted(table_data.keys()):
-            if table_data[attribute]["type"] == "ENUM" and "options" not in table_data[attribute]:
+            if (
+                table_data[attribute]["type"] == "ENUM"
+                and "options" not in table_data[attribute]
+            ):
                 table_data[attribute]["type"] = "TEXT"
             q += f"    {attribute} {table_data[attribute]['type']}"
             if table_data[attribute]["type"] == "ENUM":
@@ -471,12 +571,13 @@ def get_query_from_dict(schema, engine: Engine):
     return q
 
 
-def parse_and_import_cards(json_data: Dict, input_file: pathlib.Path, output_file: Dict, engine: Engine) -> None:
+def parse_and_import_cards(json_data: Dict, output_file: Dict, engine: Engine) -> None:
     """
     Parse the JSON cards and input them into the database
 
-    :param input_file: AllPrintings.json file
+    :param json_data: Card data from JSON file
     :param output_file: Output info dictionary
+    :param engine: Database engine destination
     """
     LOGGER.info("Building sets")
     if "data" in json_data:
@@ -502,7 +603,9 @@ def parse_and_import_cards(json_data: Dict, input_file: pathlib.Path, output_fil
             set_translation_attr = handle_set_translation_row_insertion(
                 language, translation, set_code
             )
-            sql_dict_insert(set_translation_attr, "set_translations", output_file, engine)
+            sql_dict_insert(
+                set_translation_attr, "set_translations", output_file, engine
+            )
 
 
 def handle_set_row_insertion(set_data: JsonDict, engine: Engine) -> JsonDict:
@@ -512,6 +615,7 @@ def handle_set_row_insertion(set_data: JsonDict, engine: Engine) -> JsonDict:
 
     :param set_data: Data to process
     :return: Dictionary ready for insertion
+    :param engine: Database engine destination
     """
     set_skip_keys = ["cards", "tokens", "translations"]
     set_insert_values = {}
@@ -529,13 +633,16 @@ def handle_set_row_insertion(set_data: JsonDict, engine: Engine) -> JsonDict:
     return set_insert_values
 
 
-def handle_card_row_insertion(card_data: JsonDict, set_name: str, engine: Engine) -> JsonDict:
+def handle_card_row_insertion(
+    card_data: JsonDict, set_name: str, engine: Engine
+) -> JsonDict:
     """
     This method will take the card data and convert it,
     preparing for SQLite insertion
 
     :param card_data: Data to process
     :param set_name: Set name, as it's a card element
+    :param engine: Database engine destination
     :return: Dictionary ready for insertion
     """
     # ORDERING MATTERS HERE
@@ -576,13 +683,16 @@ def handle_card_row_insertion(card_data: JsonDict, set_name: str, engine: Engine
     }
 
 
-def sql_insert_all_card_fields(card_attributes: JsonDict, output_file: Dict, engine: Engine) -> None:
+def sql_insert_all_card_fields(
+    card_attributes: JsonDict, output_file: Dict, engine: Engine
+) -> None:
     """
     Given all of the card's data, insert the data into the
     appropriate SQLite tables.
 
     :param card_attributes: Tuple of data
     :param output_file: Output info dictionary
+    :param engine: Database engine destination
     """
     sql_dict_insert(card_attributes["cards"], "cards", output_file, engine)
 
@@ -601,15 +711,15 @@ def sql_insert_all_card_fields(card_attributes: JsonDict, output_file: Dict, eng
 
 
 def handle_token_row_insertion(
-        token_data: JsonDict,
-        set_name: str,
-        engine: Engine) -> JsonDict:
+    token_data: JsonDict, set_name: str, engine: Engine
+) -> JsonDict:
     """
     This method will take the token data and convert it,
     preparing for SQLite insertion
 
     :param token_data: Data to process
     :param set_name: Set name, as it's a card element
+    :param engine: Database engine destination
     :return: Dictionary ready for insertion
     """
     token_insert_values: JsonDict = {"setCode": set_name}
@@ -623,7 +733,9 @@ def handle_token_row_insertion(
     return token_insert_values
 
 
-def handle_set_translation_row_insertion(language: str, translation: str, set_name: str) -> JsonDict:
+def handle_set_translation_row_insertion(
+    language: str, translation: str, set_name: str
+) -> JsonDict:
     """
     This method will take the set translation data and convert it,
     preparing for SQLite insertion
@@ -642,17 +754,20 @@ def handle_set_translation_row_insertion(language: str, translation: str, set_na
     return set_translation_insert_values
 
 
-def parse_and_import_extras(input_file: pathlib.Path, output_file: Dict, engine: Engine) -> None:
+def parse_and_import_extras(
+    input_file: pathlib.Path, output_file: Dict, engine: Engine
+) -> None:
     """
     Parse the extra data files and input them into the database
 
     :param input_file: AllPrintings.json file
     :param output_file: Output info dictionary
+    :param engine: Database engine destination
     """
     if output_file["AllPrices.json"]:
         LOGGER.info("Inserting AllPrices rows")
         with input_file.parent.joinpath("AllPrices.json").open(
-                "r", encoding="utf8"
+            "r", encoding="utf8"
         ) as f:
             json_data = json.load(f)
         for card_uuid, price_data in json_data.items():
@@ -669,7 +784,7 @@ def parse_and_import_extras(input_file: pathlib.Path, output_file: Dict, engine:
                                 },
                                 "prices",
                                 output_file,
-                                engine
+                                engine,
                             )
 
     if output_file["AllDeckFiles"]:
@@ -696,7 +811,7 @@ def parse_and_import_extras(input_file: pathlib.Path, output_file: Dict, engine:
     if output_file["Keywords.json"]:
         LOGGER.info("Inserting Keyword rows")
         with input_file.parent.joinpath("Keywords.json").open(
-                "r", encoding="utf8"
+            "r", encoding="utf8"
         ) as f:
             json_data = json.load(f)
         for keyword_type in json_data:
@@ -704,31 +819,34 @@ def parse_and_import_extras(input_file: pathlib.Path, output_file: Dict, engine:
                 continue
             for keyword in json_data[keyword_type]:
                 sql_dict_insert(
-                    {"word": keyword, "type": keyword_type}, "keywords", output_file, engine
+                    {"word": keyword, "type": keyword_type},
+                    "keywords",
+                    output_file,
+                    engine,
                 )
 
     if output_file["CardTypes.json"]:
         LOGGER.info("Inserting Card Type rows")
         with input_file.parent.joinpath("CardTypes.json").open(
-                "r", encoding="utf8"
+            "r", encoding="utf8"
         ) as f:
             json_data = json.load(f)
-        for type in json_data["types"]:
+        for card_type in json_data["types"]:
             subtypes = []
-            for subtype in json_data["types"][type]["subTypes"]:
+            for subtype in json_data["types"][card_type]["subTypes"]:
                 subtypes.append(subtype)
             supertypes = []
-            for supertype in json_data["types"][type]["superTypes"]:
+            for supertype in json_data["types"][card_type]["superTypes"]:
                 supertypes.append(supertype)
             sql_dict_insert(
                 {
-                    "type": type,
+                    "type": card_type,
                     "subTypes": ", ".join(subtypes),
                     "superTypes": ", ".join(supertypes),
                 },
                 "types",
                 output_file,
-                engine
+                engine,
             )
 
 
@@ -826,7 +944,7 @@ def modify_for_sql_insert(data: Any, engine: Engine) -> Union[str, int, float, N
     Arrays and booleans can't be inserted, so we need to stringify
 
     :param data: Data to modify
-    :param engine: SQL engine in use
+    :param engine: Database engine destination
     :return: string value
     """
     if isinstance(data, (str, int, float)):
@@ -836,7 +954,12 @@ def modify_for_sql_insert(data: Any, engine: Engine) -> Union[str, int, float, N
     if not data:
         return None
 
-    if isinstance(data, list) and data and isinstance(data[0], str) and engine != "postgres":
+    if (
+        isinstance(data, list)
+        and data
+        and isinstance(data[0], str)
+        and engine != "postgres"
+    ):
         return ",".join(data)
 
     if isinstance(data, list) or isinstance(data, dict):
@@ -861,25 +984,28 @@ def modify_for_sql_file(data: JsonDict, engine: Engine) -> JsonDict:
     return data
 
 
-def sql_dict_insert(data: JsonDict, table: str, output_file: Dict, engine: Engine) -> None:
+def sql_dict_insert(
+    data: JsonDict, table: str, output_file: Dict, engine: Engine
+) -> None:
     """
     Insert a dictionary into a sqlite table
 
     :param data: Dict to insert
     :param table: Table to insert to
     :param output_file: Output info dictionary
+    :param engine: SQL engine in use
     """
     try:
         if engine != "sqlite":
             data = modify_for_sql_file(data, engine)
             query = (
-                    "INSERT INTO "
-                    + table
-                    + " ("
-                    + ", ".join(data.keys())
-                    + ") VALUES ({"
-                    + "}, {".join(data.keys())
-                    + "});\n"
+                "INSERT INTO "
+                + table
+                + " ("
+                + ", ".join(data.keys())
+                + ") VALUES ({"
+                + "}, {".join(data.keys())
+                + "});\n"
             )
             query = query.format(**data)
             output_file["handle"].write(query)
