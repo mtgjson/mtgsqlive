@@ -1,18 +1,18 @@
-# [**MTGSQLive**](https://mtgjson.com/)
+# MTGSQLive
 
-# Connect With Us
+Create databases from MTGJSON data.
+
+## Connect With Us
 Discord via [![Discord](https://img.shields.io/discord/224178957103136779.svg)](https://discord.gg/74GUQDE)
 
 Gitter via [![Gitter](https://img.shields.io/gitter/room/nwjs/nw.js.svg)](https://gitter.im/mtgjson/mtgjson4)
 
-
-### Goals
-The goals of this project are to extend the MTGJSONv5 protocols and give an option for pre-processed SQLite downloads.
-lly edit it to be correct. Once that is accomplished, we are then no longer dependent on them for card data, except for rullings.
+# Goals
+The goals of this project are to extend the MTGJSONv5 protocols and give an option for pre-processed SQLite downloads. Once that is accomplished, we are then no longer dependent on them for card data, except for rulings.
 
 # About Us
 
-MTGJSON and MTGSQlive are open sourced database creation and distribution tool for [*Magic: The Gathering*](https://magic.wizards.com/) cards, specifically in [JSON](https://json.org/) and [SQLite](https://www.sqlite.org/index.html) format.
+[MTGJSON](https://mtgjson.com/) and MTGSQlive are open sourced database creation and distribution tool for [*Magic: The Gathering*](https://magic.wizards.com/) cards, specifically in [JSON](https://json.org/) and [SQLite](https://www.sqlite.org/index.html) format.
 
 You can find our documentation with all properties [here](https://mtgjson.com/data-models/).
 
