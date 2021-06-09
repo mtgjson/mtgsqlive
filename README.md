@@ -28,7 +28,7 @@ This system was built using *Python 3.9*, so we can only guarantee proper functi
 
 To produce a Postgres-ready output, ensure the output file has a `.sql` extension.
 
-```sh
+```bash
 # Install dependencies
 pip install -r requirements.txt 
 
@@ -55,7 +55,7 @@ query HumanCleric {
 
 If the output file has a `.sql` extension, the destination engine will default to Postgres. The `-e` flag can be set to produce MySQL-conforming output.
 
-```sh
+```bash
 # Install dependencies
 pip install -r requirements.txt 
 
@@ -70,7 +70,7 @@ To create a SQLite database, use a `.sqlite` extension for the output file argum
 >**Note:** These are the build directions to compile your own SQLite file.<br>
 >If you are looking for the pre-compiled SQLite file, you can download it from [MTGJSON.com](https://mtgjson.com/).
 
-```sh
+```bash
 # Install dependencies
 pip install -r requirements.txt 
 
