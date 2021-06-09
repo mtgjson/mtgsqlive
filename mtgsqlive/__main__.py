@@ -59,13 +59,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Define our I/O paths
-    input_file = pathlib.Path(args.i).expanduser()
-    output_file = {"path": pathlib.Path(args.o).expanduser().absolute(), "handle": None}
+    input_file = pathlib.Path(args.input_file).expanduser()
+    output_file = {"path": pathlib.Path(args.output_file).expanduser().absolute(), "handle": None}
 
-    if args.v:
+    if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    if args.a:
+    if args.all:
         logging.info("> Creating AllPrintings.sqlite")
         json2sql.execute(
             input_file,
@@ -73,15 +73,15 @@ if __name__ == "__main__":
                 "path": output_file["path"].joinpath("AllPrintings.sqlite"),
                 "handle": None,
             },
-            args.x,
+            args.extra,
         )
 
         logging.info("> Creating AllPrintings.sql")
         json2sql.execute(
             input_file,
             {"path": output_file["path"].joinpath("AllPrintings.sql"), "handle": None},
-            args.x,
-            args.e,
+            args.extra,
+            args.engine,
         )
 
         logging.info("> Creating AllPrintings CSV components")
@@ -92,4 +92,4 @@ if __name__ == "__main__":
     elif str(input_file).endswith(".sqlite"):
         sql2csv.execute(input_file, output_file)
     else:
-        json2sql.execute(input_file, output_file, args.x, args.e)
+        json2sql.execute(input_file, output_file, args.extra, args.engine)
