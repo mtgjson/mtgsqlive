@@ -28,6 +28,9 @@ def execute(
         exit(1)
     check_extra_inputs(json_input, output_file, check_extras)
 
+    if output_file["path"].suffix == ".sqlite":
+        engine = "sqlite"
+
     LOGGER.info("Loading json file into memory")
     with json_input.open("r", encoding="utf8") as json_file:
         json_data = json.load(json_file)
@@ -324,7 +327,7 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
                                             "type": "TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE "
                                             "CASCADE "
                                         }
-                                    if engine == "postgres":
+                                    elif engine == "postgres":
                                         schema[cardKey]["uuid"] = {
                                             "type": "CHAR(36) NOT NULL,\n    FOREIGN KEY (uuid) REFERENCES cards("
                                             "uuid) ON UPDATE CASCADE ON DELETE CASCADE "
@@ -349,7 +352,7 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
                                                 cardValue
                                             )
                                 else:
-                                    if cardKey in enums[setKey]:
+                                    if cardKey in enums[setKey] and not engine == "sqlite":
                                         if engine == "postgres":
                                             schema[setKey][cardKey] = {
                                                 "type": f"{setKey}_{cardKey}",
@@ -397,7 +400,7 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
                         schema[setKey]["setCode"] = {
                             "type": "TEXT(8) REFERENCES sets(code) ON UPDATE CASCADE ON DELETE CASCADE"
                         }
-                    if engine == "postgres":
+                    elif engine == "postgres":
                         schema[setKey]["setCode"] = {
                             "type": "VARCHAR(8) NOT NULL,\n    FOREIGN KEY (setCode) REFERENCES sets(code) ON UPDATE "
                             "CASCADE ON DELETE CASCADE "
@@ -433,7 +436,7 @@ def generate_sql_schema(json_data: Dict, output_file: Dict, engine: Engine) -> s
                             schema["sets"]["booster"] = {"type": "LONGTEXT"}
                         continue
                     # determine type of the set property
-                    if setKey in enums["sets"]:
+                    if setKey in enums["sets"] and not engine == "sqlite":
                         if engine == "postgres":
                             schema["sets"][setKey] = {
                                 "type": f"sets_{setKey}",
@@ -535,7 +538,6 @@ def get_sql_type(mixed, engine: Engine) -> str:
 def get_query_from_dict(schema, engine: Engine):
     q = ""
     for table_name, table_data in schema.items():
-
         if engine == "postgres":
             for attribute in sorted(table_data.keys()):
                 if "options" in table_data[attribute]:
@@ -544,9 +546,7 @@ def get_query_from_dict(schema, engine: Engine):
                         + "', '".join(table_data[attribute]["options"])
                         + "');\n"
                     )
-            q += f'CREATE TABLE "{table_name}" (\n'
-        else:
-            q += f"CREATE TABLE `{table_name}` (\n"
+        q += f"CREATE TABLE `{table_name}` (\n"
         if engine == "postgres":
             q += "    id SERIAL PRIMARY KEY,\n"
         elif engine == "sqlite":
@@ -1015,9 +1015,10 @@ def sql_dict_insert(
             placeholders = ":" + ", :".join(data.keys())
             query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
             cursor.execute(query, data)
-    except:
+    except Exception as e:
         datastr = str(data)
         LOGGER.warning(f"Failed to insert row in '{table}' with values: {datastr}")
+        LOGGER.warning(e)
 
 
 def commit_changes_and_close_db(output_file: Dict) -> None:
