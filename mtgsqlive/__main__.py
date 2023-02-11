@@ -6,7 +6,7 @@ import logging
 import pathlib
 
 import mtgsqlive
-from mtgsqlive import sql2csv, json2sql
+from mtgsqlive import sql2csv, json2sql, parquet
 
 if __name__ == "__main__":
     mtgsqlive.init_logger()
@@ -22,14 +22,14 @@ if __name__ == "__main__":
         "-o",
         help="output folder (outputs/)",
         default="outputs",
-        required=True,
-        metavar="fileOut",
+        metavar="fileOut"
     )
     parser.add_argument(
-        "--all",
-        help="Build all types (SQLite, SQL, CSV)",
-        action="store_true",
-        required=False,
+        "--formats",
+        help="Formats to output. By default all outputs are produced",
+        nargs="+",
+        choices=["sqlite", "sql", "csv", "parquet"],
+        default=["sqlite", "sql", "csv", "parquet"]
     )
     parser.add_argument(
         "-x",
@@ -42,31 +42,32 @@ if __name__ == "__main__":
     # Define our I/O paths
     input_file = pathlib.Path(args.i).expanduser()
     output_file = {"path": pathlib.Path(args.o).expanduser().absolute(), "handle": None}
+    output_file["path"].mkdir(exist_ok=True, parents=True)
 
-    if args.all:
+    # CSV requires sqlite
+    if "sqlite" in args.formats or "csv" in args.formats:
         logging.info("> Creating AllPrintings.sqlite")
         json2sql.execute(
             input_file,
             {
-                "path": output_file["path"].joinpath("AllPrintings.sqlite"),
+                "path":  output_file["path"] / "AllPrintings.sqlite",
                 "handle": None,
             },
             args.x,
         )
-
+    if "sql" in args.formats:
         logging.info("> Creating AllPrintings.sql")
         json2sql.execute(
             input_file,
-            {"path": output_file["path"].joinpath("AllPrintings.sql"), "handle": None},
+            {"path": output_file["path"] / "AllPrintings.sql", "handle": None},
             args.x,
         )
-
+    if "csv" in args.formats:
         logging.info("> Creating AllPrintings CSV components")
         sql2csv.execute(
-            output_file["path"].joinpath("AllPrintings.sqlite"),
+            output_file["path"] / "AllPrintings.sqlite",
             {"path": output_file["path"].joinpath("csv"), "handle": None},
         )
-    elif str(input_file).endswith(".sqlite"):
-        sql2csv.execute(input_file, output_file)
-    else:
-        json2sql.execute(input_file, output_file, args.x)
+    if "parquet" in args.formats:
+        logging.info("> Creating AllPrintings.parquet")
+        parquet.execute(input_file, output_file["path"] / "AllPrintings.parquet")

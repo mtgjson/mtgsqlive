@@ -1,3 +1,4 @@
 pandas
 argparse
 requests
+pyarrow
