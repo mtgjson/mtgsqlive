@@ -796,7 +796,7 @@ def modify_for_sql_insert(data: Any) -> Union[str, int, float, None]:
         return int(data)
 
     if isinstance(data, dict):
-        return str(data)
+        return json.dumps(data)
 
     return ""
 
