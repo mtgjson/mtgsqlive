@@ -1,72 +1,80 @@
-"""
-Main Executor
-"""
 import argparse
+import json
 import logging
 import pathlib
 
-import mtgsqlive
-from mtgsqlive import sql2csv, json2sql
+from mtgsqlive.converters import (
+    CsvConverter,
+    MysqlConverter,
+    ParquetConverter,
+    PostgresqlConverter,
+    SqliteConverter,
+)
 
-if __name__ == "__main__":
-    mtgsqlive.init_logger()
+LOGGER = logging.getLogger(__name__)
 
+
+def get_converters():
+    return {
+        "csv": CsvConverter,
+        "mysql": MysqlConverter,
+        "parquet": ParquetConverter,
+        "postgresql": PostgresqlConverter,
+        "sqlite": SqliteConverter,
+    }
+
+
+def parse_args():
     parser = argparse.ArgumentParser()
+
     parser.add_argument(
         "-i",
-        help="input source (AllPrintings.json)",
+        "--input-file",
+        type=str,
         required=True,
-        metavar="fileIn",
+        help="MTGJSON v5 AllPrintings.json path",
     )
-    parser.add_argument(
-        "-o",
-        help="output folder (outputs/)",
-        default="outputs",
-        required=True,
-        metavar="fileOut",
+    parser.add_argument("-o", "--output-dir", type=str, default="~/Desktop/")
+
+    converter_group = parser.add_argument_group(title="Converter Types")
+    converter_group.add_argument(
+        "--csv", action="store_true", help="Compile AllPrintings.csv"
     )
-    parser.add_argument(
-        "--all",
-        help="Build all types (SQLite, SQL, CSV)",
-        action="store_true",
-        required=False,
+    converter_group.add_argument(
+        "--mysql", action="store_true", help="Compile AllPrintings.sql"
     )
-    parser.add_argument(
-        "-x",
-        help="Check for extra input files",
-        action="store_true",
-        required=False,
+    converter_group.add_argument(
+        "--parquet", action="store_true", help="Compile AllPrintings.parquet"
     )
-    args = parser.parse_args()
+    converter_group.add_argument(
+        "--postgresql", action="store_true", help="Compile AllPrintings.psql"
+    )
+    converter_group.add_argument(
+        "--sqlite", action="store_true", help="Compile AllPrintings.sqlite"
+    )
 
-    # Define our I/O paths
-    input_file = pathlib.Path(args.i).expanduser()
-    output_file = {"path": pathlib.Path(args.o).expanduser().absolute(), "handle": None}
+    return parser.parse_args()
 
-    if args.all:
-        logging.info("> Creating AllPrintings.sqlite")
-        json2sql.execute(
-            input_file,
-            {
-                "path": output_file["path"].joinpath("AllPrintings.sqlite"),
-                "handle": None,
-            },
-            args.x,
-        )
 
-        logging.info("> Creating AllPrintings.sql")
-        json2sql.execute(
-            input_file,
-            {"path": output_file["path"].joinpath("AllPrintings.sql"), "handle": None},
-            args.x,
-        )
+def main():
+    args = parse_args()
 
-        logging.info("> Creating AllPrintings CSV components")
-        sql2csv.execute(
-            output_file["path"].joinpath("AllPrintings.sqlite"),
-            {"path": output_file["path"].joinpath("csv"), "handle": None},
-        )
-    elif str(input_file).endswith(".sqlite"):
-        sql2csv.execute(input_file, output_file)
-    else:
-        json2sql.execute(input_file, output_file, args.x)
+    mtgjson_input_file = pathlib.Path(args.input_file).expanduser()
+    if not mtgjson_input_file.exists():
+        LOGGER.error(f"Cannot locate {mtgjson_input_file}, exiting.")
+        return
+
+    with mtgjson_input_file.open() as fp:
+        mtgjson_input_data = json.load(fp)
+
+    converters_map = get_converters()
+    for converter_input_param, converter in converters_map.copy().items():
+        if not getattr(args, converter_input_param):
+            del converters_map[converter_input_param]
+
+    for converter in converters_map.values():
+        converter(mtgjson_input_data, args.output_dir).convert()
+
+
+if __name__ == "__main__":
+    main()

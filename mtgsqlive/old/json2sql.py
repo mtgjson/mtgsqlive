@@ -34,8 +34,7 @@ def execute(json_input, output_file, check_extras=False) -> None:
     commit_changes_and_close_db(output_file)
 
 
-def valid_input_output(input_file: pathlib.Path,
-                       output_dir: Dict) -> bool:
+def valid_input_output(input_file: pathlib.Path, output_dir: Dict) -> bool:
     """
     Ensure I/O paths are valid and clean for program
     """
@@ -46,32 +45,32 @@ def valid_input_output(input_file: pathlib.Path,
     # Create the output directory if it doesn't exist
     output_dir["path"].parent.mkdir(exist_ok=True)
     if output_dir["path"].is_file():
-        LOGGER.warning(f"Output path {output_dir['path']} already exists, "
-                       "moving it")
+        LOGGER.warning(f"Output path {output_dir['path']} already exists, " "moving it")
         # Backup the existing file to another file with .old extension
         output_dir["path"].replace(
-            output_dir["path"].parent.joinpath(
-                output_dir["path"].name + ".old"
-            )
+            output_dir["path"].parent.joinpath(output_dir["path"].name + ".old")
         )
     return True
 
 
-def check_extra_inputs(input_file: pathlib.Path,
-                       output_dir: Dict, check_extras=False) -> None:
+def check_extra_inputs(
+    input_file: pathlib.Path, output_dir: Dict, check_extras=False
+) -> None:
     """
     Check if there are more json files to convert to sql
     """
-    extras = ["AllPrices.json", "AllDeckFiles",
-              "Keywords.json", "CardTypes.json"]
+    extras = ["AllPrices.json", "AllDeckFiles", "Keywords.json", "CardTypes.json"]
 
     for extra in extras:
         output_dir[extra] = False
 
     if not check_extras:
-        return 
+        return
     for extra in extras:
-        if input_file.parent.joinpath(extra).is_file() or input_file.parent.joinpath(extra).is_dir():
+        if (
+            input_file.parent.joinpath(extra).is_file()
+            or input_file.parent.joinpath(extra).is_dir()
+        ):
             LOGGER.info("Building with " + extra + " supplement")
             output_dir[extra] = True
 
@@ -128,8 +127,7 @@ def build_sql_schema(json_data: Dict, output_file: Dict) -> None:
         output_file["handle"].commit()
 
 
-def generate_sql_schema(json_data: Dict,
-                        output_file: Dict, engine: str) -> str:
+def generate_sql_schema(json_data: Dict, output_file: Dict, engine: str) -> str:
     """
     Generate the SQL database schema from the JSON input
 
@@ -140,7 +138,7 @@ def generate_sql_schema(json_data: Dict,
     :param json_data: JSON dictionary
     :param engine: target SQL engine
     """
-    
+
     version = get_version(json_data)
     schema = {
         "sets": {},
@@ -178,8 +176,7 @@ def generate_sql_schema(json_data: Dict,
         "foreign_data": ["language"],
         "set_translations": ["language"],
         "legalities": ["format", "status"],
-        "cards": ["borderColor", "frameEffect", "frameVersion", "layout",
-                  "rarity"],
+        "cards": ["borderColor", "frameEffect", "frameVersion", "layout", "rarity"],
         "tokens": ["borderColor", "layout"],
     }
     if "data" in json_data:
@@ -213,36 +210,84 @@ def generate_sql_schema(json_data: Dict,
                                 # handle enum options
                                 if cardKey in enums:
                                     if cardKey == "foreign_data":
-                                        if schema[cardKey]["language"]["type"] == "ENUM":
+                                        if (
+                                            schema[cardKey]["language"]["type"]
+                                            == "ENUM"
+                                        ):
                                             for foreign in cardValue:
-                                                if "options" in schema[cardKey]["language"]:
-                                                    if foreign["language"] not in schema[cardKey]["language"]["options"]:
-                                                        schema[cardKey]["language"]["options"].append(foreign["language"])
+                                                if (
+                                                    "options"
+                                                    in schema[cardKey]["language"]
+                                                ):
+                                                    if (
+                                                        foreign["language"]
+                                                        not in schema[cardKey][
+                                                            "language"
+                                                        ]["options"]
+                                                    ):
+                                                        schema[cardKey]["language"][
+                                                            "options"
+                                                        ].append(foreign["language"])
                                                 else:
-                                                    schema[cardKey]["language"]["options"] = [foreign["language"]]
+                                                    schema[cardKey]["language"][
+                                                        "options"
+                                                    ] = [foreign["language"]]
                                     elif cardKey == "legalities":
                                         if schema[cardKey]["format"]["type"] == "ENUM":
                                             for format in cardValue.keys():
-                                                if "options" in schema[cardKey]["format"]:
-                                                    if format not in schema[cardKey]["format"]["options"]:
-                                                        schema[cardKey]["format"]["options"].append(format)
+                                                if (
+                                                    "options"
+                                                    in schema[cardKey]["format"]
+                                                ):
+                                                    if (
+                                                        format
+                                                        not in schema[cardKey][
+                                                            "format"
+                                                        ]["options"]
+                                                    ):
+                                                        schema[cardKey]["format"][
+                                                            "options"
+                                                        ].append(format)
                                                 else:
-                                                    schema[cardKey]["format"]["options"] = [format]
+                                                    schema[cardKey]["format"][
+                                                        "options"
+                                                    ] = [format]
                                         if schema[cardKey]["status"]["type"] == "ENUM":
                                             for status in cardValue.values():
-                                                if "options" in schema[cardKey]["status"]:
-                                                    if status not in schema[cardKey]["status"]["options"]:
-                                                        schema[cardKey]["status"]["options"].append(status)
+                                                if (
+                                                    "options"
+                                                    in schema[cardKey]["status"]
+                                                ):
+                                                    if (
+                                                        status
+                                                        not in schema[cardKey][
+                                                            "status"
+                                                        ]["options"]
+                                                    ):
+                                                        schema[cardKey]["status"][
+                                                            "options"
+                                                        ].append(status)
                                                 else:
-                                                    schema[cardKey]["status"]["options"] = [status]
+                                                    schema[cardKey]["status"][
+                                                        "options"
+                                                    ] = [status]
                                     elif cardKey == "prices":
                                         if schema[cardKey]["type"]["type"] == "ENUM":
                                             for type in cardValue.keys():
                                                 if "options" in schema[cardKey]["type"]:
-                                                    if type not in schema[cardKey]["type"]["options"]:
-                                                        schema[cardKey]["type"]["options"].append(type)
+                                                    if (
+                                                        type
+                                                        not in schema[cardKey]["type"][
+                                                            "options"
+                                                        ]
+                                                    ):
+                                                        schema[cardKey]["type"][
+                                                            "options"
+                                                        ].append(type)
                                                 else:
-                                                    schema[cardKey]["type"]["options"] = [type]
+                                                    schema[cardKey]["type"][
+                                                        "options"
+                                                    ] = [type]
                                 # create the 'uuid' foreign key for each reference table
                                 if "uuid" not in schema[cardKey]:
                                     if engine == "sqlite":
@@ -256,12 +301,26 @@ def generate_sql_schema(json_data: Dict,
                             else:  # 'cards' table properties
                                 # determine if the card property is already in the list
                                 if cardKey in schema[setKey].keys():
-                                    if cardKey in enums[setKey] and not engine == "sqlite":
-                                        if cardValue not in schema[setKey][cardKey]["options"]:
-                                            schema[setKey][cardKey]["options"].append(cardValue)
+                                    if (
+                                        cardKey in enums[setKey]
+                                        and not engine == "sqlite"
+                                    ):
+                                        if (
+                                            cardValue
+                                            not in schema[setKey][cardKey]["options"]
+                                        ):
+                                            schema[setKey][cardKey]["options"].append(
+                                                cardValue
+                                            )
                                 else:
-                                    if cardKey in enums[setKey] and not engine == "sqlite":
-                                        schema[setKey][cardKey] = {"type": "ENUM", "options": [cardValue]}
+                                    if (
+                                        cardKey in enums[setKey]
+                                        and not engine == "sqlite"
+                                    ):
+                                        schema[setKey][cardKey] = {
+                                            "type": "ENUM",
+                                            "options": [cardValue],
+                                        }
                                     else:
                                         # determine type of the property
                                         schema[setKey][cardKey] = {
@@ -286,8 +345,13 @@ def generate_sql_schema(json_data: Dict,
                                 if "options" not in schema[setKey]["language"]:
                                     schema[setKey]["language"]["options"] = [language]
                                 else:
-                                    if language not in schema[setKey]["language"]["options"]:
-                                        schema[setKey]["language"]["options"].append(language)
+                                    if (
+                                        language
+                                        not in schema[setKey]["language"]["options"]
+                                    ):
+                                        schema[setKey]["language"]["options"].append(
+                                            language
+                                        )
                 # add 'setCode' to each table that references 'sets'
                 if "setCode" not in schema[setKey]:
                     if engine == "sqlite":
@@ -339,12 +403,16 @@ def generate_sql_schema(json_data: Dict,
         }
     if output_file["AllPrices.json"] or version.startswith("4"):
         schema["prices"] = {
-            "uuid": { "type": "TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE" if engine == "sqlite" else "CHAR(36) NOT NULL,\n    INDEX(uuid),\n    FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE" },
+            "uuid": {
+                "type": "TEXT(36) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
+                if engine == "sqlite"
+                else "CHAR(36) NOT NULL,\n    INDEX(uuid),\n    FOREIGN KEY (uuid) REFERENCES cards(uuid) ON UPDATE CASCADE ON DELETE CASCADE"
+            },
             "price": {"type": "FLOAT" if engine == "sqlite" else "DECIMAL(8,2)"},
             "type": {"type": "TEXT" if engine == "sqlite" else "ENUM"},
             "date": {"type": "DATE"},
         }
-    
+
     if output_file["AllDeckFiles"]:
         schema["decks"] = {
             "fileName": {"type": "TEXT"},
@@ -402,7 +470,10 @@ def get_query_from_dict(schema, engine):
         else:
             q += "    id INTEGER PRIMARY KEY AUTO_INCREMENT,\n"
         for attribute in sorted(table_data.keys()):
-            if table_data[attribute]["type"] == "ENUM" and "options" not in table_data[attribute]:
+            if (
+                table_data[attribute]["type"] == "ENUM"
+                and "options" not in table_data[attribute]
+            ):
                 table_data[attribute]["type"] = "TEXT"
             q += f"    {attribute} {table_data[attribute]['type']}"
             if table_data[attribute]["type"] == "ENUM":
@@ -523,9 +594,7 @@ def handle_card_row_insertion(card_data: JsonDict, set_name: str) -> JsonDict:
     }
 
 
-def sql_insert_all_card_fields(
-    card_attributes: JsonDict, output_file: Dict
-) -> None:
+def sql_insert_all_card_fields(card_attributes: JsonDict, output_file: Dict) -> None:
     """
     Given all of the card's data, insert the data into the
     appropriate SQLite tables.
@@ -678,9 +747,7 @@ def parse_and_import_extras(input_file: pathlib.Path, output_file: Dict) -> None
             )
 
 
-def handle_foreign_rows(
-    card_data: JsonDict, card_uuid: str
-) -> List[JsonDict]:
+def handle_foreign_rows(card_data: JsonDict, card_uuid: str) -> List[JsonDict]:
     """
     This method will take the card data and convert it,
     preparing for SQLite insertion
@@ -707,9 +774,7 @@ def handle_foreign_rows(
     return foreign_entries
 
 
-def handle_legal_rows(
-    card_data: JsonDict, card_uuid: str
-) -> List[JsonDict]:
+def handle_legal_rows(card_data: JsonDict, card_uuid: str) -> List[JsonDict]:
     """
     This method will take the card data and convert it,
     preparing for SQLite insertion
@@ -727,9 +792,7 @@ def handle_legal_rows(
     return legalities
 
 
-def handle_ruling_rows(
-    card_data: JsonDict, card_uuid: str
-) -> List[JsonDict]:
+def handle_ruling_rows(card_data: JsonDict, card_uuid: str) -> List[JsonDict]:
     """This method will take the card data and convert it,
     preparing for SQLite insertion
 
@@ -749,9 +812,7 @@ def handle_ruling_rows(
     return rulings
 
 
-def handle_price_rows(
-    card_data: JsonDict, card_uuid: str
-) -> List[JsonDict]:
+def handle_price_rows(card_data: JsonDict, card_uuid: str) -> List[JsonDict]:
     """This method will take the card data and convert it,
     preparing for SQLite insertion
 
