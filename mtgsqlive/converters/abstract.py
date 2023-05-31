@@ -1,7 +1,7 @@
 import abc
 import copy
 import pathlib
-from typing import Any, Dict, TextIO, Optional
+from typing import Any, Dict, TextIO, Optional, Iterator
 
 import humps
 
@@ -19,16 +19,17 @@ class AbstractConverter(abc.ABC):
     mtgjson_data: Dict[str, Any]
     output_obj: OutputObject
 
-    skipable_set_keys = ["cards", "tokens", "booster", "sealedProduct", "translations"]
+    skipable_set_keys = ["booster", "cards", "sealedProduct", "tokens", "translations"]
     skipable_card_keys = [
         "convertedManaCost",
-        "legalities",
         "foreignData",
-        "rulings",
         "identifiers",
+        "legalities",
+        "purchaseUrls",
+        "rulings",
     ]
 
-    def __init__(self, mtgjson_data: Dict[str, Any], output_path: str):
+    def __init__(self, mtgjson_data: Dict[str, Any], output_path: str) -> None:
         self.mtgjson_data = mtgjson_data
         self.output_obj = OutputObject(None, pathlib.Path(output_path).expanduser())
 
@@ -50,7 +51,20 @@ class AbstractConverter(abc.ABC):
                     del set_data[set_attribute]
             yield set_data
 
-    def get_next_card_like(self, set_attribute):
+    def get_next_set_field_with_normalization(
+        self, set_attribute: str
+    ) -> Iterator[Dict[str, Any]]:
+        for set_code, set_data in self.mtgjson_data.get("data").items():
+            if not set_data.get(set_attribute):
+                continue
+
+            set_data[set_attribute]["set_code"] = set_code
+            yield {
+                humps.camelize(key): value
+                for key, value in set_data[set_attribute].items()
+            }
+
+    def get_next_card_like(self, set_attribute: str) -> Iterator[Dict[str, Any]]:
         for set_code, set_data in self.mtgjson_data.get("data").items():
             set_data = copy.deepcopy(set_data)
             for card in set_data.get(set_attribute):
@@ -59,21 +73,46 @@ class AbstractConverter(abc.ABC):
                         del card[card_attribute]
                 yield card
 
+    def get_next_card_identifier(self, set_attribute: str) -> Iterator[Dict[str, Any]]:
+        return self.get_next_card_field_with_normalization(set_attribute, "identifiers")
+
+    def get_next_card_legalities(self, set_attribute: str) -> Iterator[Dict[str, Any]]:
+        return self.get_next_card_field_with_normalization(set_attribute, "legalities")
+
+    def get_next_card_ruling_entry(
+        self, set_attribute: str
+    ) -> Iterator[Dict[str, Any]]:
+        return self.get_next_card_field_with_normalization(set_attribute, "rulings")
+
+    def get_next_card_foreign_data_entry(
+        self, set_attribute: str
+    ) -> Iterator[Dict[str, Any]]:
+        return self.get_next_card_field_with_normalization(set_attribute, "foreignData")
+
+    def get_next_card_purchase_url_entry(
+        self, set_attribute: str
+    ) -> Iterator[Dict[str, Any]]:
+        return self.get_next_card_field_with_normalization(
+            set_attribute, "purchaseUrls"
+        )
+
     def get_next_card_field_with_normalization(
-        self, set_attribute, secondary_attribute
-    ):
+        self, set_attribute: str, secondary_attribute: str
+    ) -> Iterator[Dict[str, Any]]:
         for set_code, set_data in self.mtgjson_data.get("data").items():
             set_data = copy.deepcopy(set_data)
             for card in set_data.get(set_attribute):
-                card[secondary_attribute]["uuid"] = card.get("uuid")
+                if isinstance(card[secondary_attribute], list):
+                    for sub_entity in card[secondary_attribute]:
+                        yield self.__camelize_and_normalize_card(sub_entity, card)
+                else:
+                    yield self.__camelize_and_normalize_card(
+                        card[secondary_attribute], card
+                    )
 
-                yield {
-                    humps.camelize(key): value
-                    for key, value in card[secondary_attribute].items()
-                }
-
-    def get_next_card_identifier(self, set_attribute):
-        return self.get_next_card_field_with_normalization(set_attribute, "identifiers")
-
-    def get_next_card_legalities(self, set_attribute):
-        return self.get_next_card_field_with_normalization(set_attribute, "legalities")
+    @staticmethod
+    def __camelize_and_normalize_card(
+        entity: Dict[str, Any], card: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        entity["uuid"] = card.get("uuid")
+        return {humps.camelize(key): value for key, value in entity.items()}

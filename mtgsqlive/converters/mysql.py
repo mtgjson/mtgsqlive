@@ -1,6 +1,6 @@
 from collections import defaultdict
 from datetime import datetime
-from typing import Optional, Any, Dict, Iterator, List
+from typing import Optional, Any, Dict, Iterator
 
 import humps
 import pymysql.converters
@@ -37,16 +37,19 @@ class MysqlConverter(AbstractConverter):
                 "",
             )
         )
-
         self.output_obj.fp.write(header)
+        self.__write_statement_chunks_to_file(
+            self.generate_database_insert_statements()
+        )
 
-        insert_statements = []
-        for statement in self.generate_database_insert_statements():
-            insert_statements.append(statement)
-            if len(insert_statements) >= 1_000:
-                self.output_obj.fp.writelines(insert_statements)
-                insert_statements = []
-        self.output_obj.fp.writelines(insert_statements)
+    def __write_statement_chunks_to_file(self, generator, chunk_size: int = 1_000):
+        statements = []
+        for statement in generator:
+            statements.append(statement)
+            if len(statements) >= chunk_size:
+                self.output_obj.fp.writelines(statements)
+                statements = []
+        self.output_obj.fp.writelines(statements)
 
     def generate_sql_schema_dict(self) -> Dict[str, Any]:
         schema = nested_dict()
@@ -59,6 +62,7 @@ class MysqlConverter(AbstractConverter):
         self.add_card_legalities_table_schema(schema)
         self.add_card_rulings_table_schema(schema)
         self.add_card_foreign_data_table_schema(schema)
+        self.add_card_purchase_urls_table_schema(schema)
         self.add_set_translation_table_schema(schema)
 
         return schema
@@ -110,13 +114,26 @@ class MysqlConverter(AbstractConverter):
     def add_card_rulings_table_schema(schema: Dict[str, Any]) -> None:
         schema["card_rulings"]["text"]["type"] = "TEXT"
         schema["card_rulings"]["date"]["type"] = "DATE"
+        schema["card_rulings"]["uuid"]["type"] = "VARCHAR(36) NOT NULL"
 
-    def __add_card_field_with_normalization(self, table_name: str, schema: Dict[str, Any], card_field: str) -> None:
-        schema[table_name]["uuid"]["type"] = "TEXT"
+    def __add_card_field_with_normalization(
+        self,
+        table_name: str,
+        schema: Dict[str, Any],
+        card_field: str,
+        iterate_subfield: bool = False,
+    ) -> None:
+        schema[table_name]["uuid"]["type"] = "VARCHAR(36) NOT NULL"
         for set_code, set_data in self.mtgjson_data.get("data").items():
             for mtgjson_card in set_data.get("cards"):
-                for card_field in mtgjson_card.get(card_field):
-                    schema[table_name][humps.decamelize(card_field)]["type"] = "TEXT"
+                for card_field_sub_entry in mtgjson_card.get(card_field, []):
+                    if iterate_subfield:
+                        for key in card_field_sub_entry:
+                            schema[table_name][humps.decamelize(key)]["type"] = "TEXT"
+                    else:
+                        schema[table_name][humps.decamelize(card_field_sub_entry)][
+                            "type"
+                        ] = "TEXT"
 
     def add_card_identifiers_table_schema(self, schema: Dict[str, Any]) -> None:
         return self.__add_card_field_with_normalization(
@@ -128,19 +145,22 @@ class MysqlConverter(AbstractConverter):
             "card_legalities", schema, "legalities"
         )
 
-    @staticmethod
-    def add_card_foreign_data_table_schema(schema: Dict[str, Any]) -> None:
-        schema["card_foreign_data"]["flavor_text"]["type"] = "TEXT"
-        schema["card_foreign_data"]["language"]["type"] = "TEXT"
-        schema["card_foreign_data"]["multiverseid"]["type"] = "INTEGER"
-        schema["card_foreign_data"]["name"]["type"] = "TEXT"
-        schema["card_foreign_data"]["text"]["type"] = "TEXT"
-        schema["card_foreign_data"]["type"]["type"] = "TEXT"
+    def add_card_foreign_data_table_schema(self, schema: Dict[str, Any]) -> None:
+        self.__add_card_field_with_normalization(
+            "card_foreign_data", schema, "foreignData", True
+        )
+        schema["card_foreign_data"]["multiverse_id"]["type"] = "INTEGER"
+
+    def add_card_purchase_urls_table_schema(self, schema: Dict[str, Any]) -> None:
+        return self.__add_card_field_with_normalization(
+            "card_purchase_urls", schema, "purchaseUrls"
+        )
 
     @staticmethod
     def add_set_translation_table_schema(schema: Dict[str, Any]) -> None:
         schema["set_translations"]["language"]["type"] = "TEXT"
         schema["set_translations"]["translation"]["type"] = "TEXT"
+        schema["set_translations"]["uuid"]["type"] = "VARCHAR(36) NOT NULL"
 
     @staticmethod
     def convert_schema_dict_to_query(schema: Dict[str, Any]) -> str:
@@ -167,31 +187,34 @@ class MysqlConverter(AbstractConverter):
         return None
 
     def generate_database_insert_statements(self) -> Iterator[str]:
-        for statement in self.generate_insert_statement("meta", self.get_metadata()):
-            yield statement
-
-        for statement in self.generate_insert_statement("sets", self.get_next_set()):
-            yield statement
-
-        for statement in self.generate_insert_statement(
-            "cards", self.get_next_card_like("cards")
-        ):
-            yield statement
-
-        for statement in self.generate_insert_statement(
-            "tokens", self.get_next_card_like("tokens")
-        ):
-            yield statement
-
-        for statement in self.generate_insert_statement(
-            "card_identifiers", self.get_next_card_identifier("cards")
-        ):
-            yield statement
-
-        for statement in self.generate_insert_statement(
-            "card_legalities", self.get_next_card_legalities("cards")
-        ):
-            yield statement
+        generators = [
+            self.generate_insert_statement("meta", self.get_metadata()),
+            self.generate_insert_statement("sets", self.get_next_set()),
+            self.generate_insert_statement("cards", self.get_next_card_like("cards")),
+            self.generate_insert_statement("tokens", self.get_next_card_like("tokens")),
+            self.generate_insert_statement(
+                "card_identifiers", self.get_next_card_identifier("cards")
+            ),
+            self.generate_insert_statement(
+                "card_legalities", self.get_next_card_legalities("cards")
+            ),
+            self.generate_insert_statement(
+                "card_rulings", self.get_next_card_ruling_entry("cards")
+            ),
+            self.generate_insert_statement(
+                "card_foreign_data", self.get_next_card_foreign_data_entry("cards")
+            ),
+            self.generate_insert_statement(
+                "card_purchase_urls", self.get_next_card_purchase_url_entry("cards")
+            ),
+            self.generate_insert_statement(
+                "set_translations",
+                self.get_next_set_field_with_normalization("translations"),
+            ),
+        ]
+        for generator in generators:
+            for statement in generator:
+                yield statement
 
     def generate_insert_statement(
         self, table_name: str, generator: Iterator[Any]
