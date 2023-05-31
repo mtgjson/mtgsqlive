@@ -30,7 +30,10 @@ disable=
     too-many-statements,
     unsubscriptable-object,
     wrong-import-order,
-    wrong-import-position
+    wrong-import-position,
+    missing-function-docstring,
+    missing-class-docstring,
+    missing-module-docstring
 
 [REPORTS]
 # Set the output format. Available formats are text, parseable, colorized, json

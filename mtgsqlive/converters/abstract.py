@@ -1,13 +1,14 @@
 import abc
 import copy
 import pathlib
+from sqlite3 import Connection
 from typing import Any, Dict, Iterator, Optional, TextIO
 
 import humps
 
 
 class OutputObject:
-    fp: TextIO
+    fp: TextIO | Connection
     root_dir: pathlib.Path
 
     def __init__(self, root_dir: pathlib.Path):
