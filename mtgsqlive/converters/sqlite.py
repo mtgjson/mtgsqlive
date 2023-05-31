@@ -39,8 +39,8 @@ class SqliteConverter(SqlLikeConverter):
             if isinstance(value, list):
                 statement = (
                     pymysql.converters.escape_string(", ".join(map(str, value)))
+                    .replace("\\'", "'")
                     .replace('\\"', '""')
-                    .replace("'", "''")
                 )
                 pre_processed_values.append(f'"{statement}"')
             elif isinstance(value, bool):
@@ -48,8 +48,8 @@ class SqliteConverter(SqlLikeConverter):
             else:
                 statement = (
                     pymysql.converters.escape_string(str(value))
+                    .replace("\\'", "'")
                     .replace('\\"', '""')
-                    .replace("'", "''")
                 )
                 pre_processed_values.append(f'"{statement}"')
 

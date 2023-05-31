@@ -2,6 +2,8 @@ import argparse
 import json
 import logging
 import pathlib
+from collections import OrderedDict
+from datetime import datetime
 from typing import Any, Dict
 
 from mtgsqlive.converters import (
@@ -12,17 +14,41 @@ from mtgsqlive.converters import (
     SqliteConverter,
 )
 
+TOP_LEVEL_DIR: pathlib.Path = pathlib.Path(__file__).resolve().parent.parent
+LOG_DIR: pathlib.Path = TOP_LEVEL_DIR.joinpath("logs")
 LOGGER = logging.getLogger(__name__)
 
 
+def init_logger() -> None:
+    LOG_DIR.mkdir(exist_ok=True)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(levelname)s] %(asctime)s: %(message)s",
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler(
+                str(
+                    LOG_DIR.joinpath(
+                        "mtgsqlive_"
+                        + str(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                        + ".log"
+                    )
+                )
+            ),
+        ],
+    )
+
+
 def get_converters() -> Dict[str, Any]:
-    return {
-        "csv": CsvConverter,
-        "mysql": MysqlConverter,
-        "parquet": ParquetConverter,
-        "postgresql": PostgresqlConverter,
-        "sqlite": SqliteConverter,
-    }
+    return OrderedDict(
+        {
+            "mysql": MysqlConverter,
+            "sqlite": SqliteConverter,
+            "csv": CsvConverter,
+            "parquet": ParquetConverter,
+            "postgresql": PostgresqlConverter,
+        }
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -58,6 +84,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    init_logger()
+
     args = parse_args()
 
     mtgjson_input_file = pathlib.Path(args.input_file).expanduser()
@@ -74,7 +102,9 @@ def main() -> None:
             del converters_map[converter_input_param]
 
     for converter in converters_map.values():
+        LOGGER.info(f"Starting MTGJSON conversion using {converter.__name__}")
         converter(mtgjson_input_data, args.output_dir).convert()
+        LOGGER.info(f"Finished MTGJSON conversion using {converter.__name__}")
 
 
 if __name__ == "__main__":

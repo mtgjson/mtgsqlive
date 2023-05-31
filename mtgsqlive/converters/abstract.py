@@ -29,9 +29,9 @@ class AbstractConverter(abc.ABC):
         "rulings",
     ]
 
-    def __init__(self, mtgjson_data: Dict[str, Any], output_path: str) -> None:
+    def __init__(self, mtgjson_data: Dict[str, Any], output_dir: str) -> None:
         self.mtgjson_data = mtgjson_data
-        self.output_obj = OutputObject(pathlib.Path(output_path).expanduser())
+        self.output_obj = OutputObject(pathlib.Path(output_dir).expanduser())
 
     @abc.abstractmethod
     def convert(self) -> None:
