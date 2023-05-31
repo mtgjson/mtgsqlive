@@ -2,6 +2,7 @@ import argparse
 import json
 import logging
 import pathlib
+from typing import Any, Dict
 
 from mtgsqlive.converters import (
     CsvConverter,
@@ -14,7 +15,7 @@ from mtgsqlive.converters import (
 LOGGER = logging.getLogger(__name__)
 
 
-def get_converters():
+def get_converters() -> Dict[str, Any]:
     return {
         "csv": CsvConverter,
         "mysql": MysqlConverter,
@@ -24,7 +25,7 @@ def get_converters():
     }
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -56,7 +57,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     args = parse_args()
 
     mtgjson_input_file = pathlib.Path(args.input_file).expanduser()
@@ -64,7 +65,7 @@ def main():
         LOGGER.error(f"Cannot locate {mtgjson_input_file}, exiting.")
         return
 
-    with mtgjson_input_file.open() as fp:
+    with mtgjson_input_file.open(encoding="utf-8") as fp:
         mtgjson_input_data = json.load(fp)
 
     converters_map = get_converters()

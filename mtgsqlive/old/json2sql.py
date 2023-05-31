@@ -10,7 +10,7 @@ import time
 from typing import Any, Dict, List, Union
 
 LOGGER = logging.getLogger(__name__)
-JsonDict = Dict[str, any]
+JsonDict = Dict[str, Any]
 
 
 def execute(json_input, output_file, check_extras=False) -> None:

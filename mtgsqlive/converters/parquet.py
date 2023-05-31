@@ -1,6 +1,6 @@
-from . import AbstractConverter
+from .abstract import AbstractConverter
 
 
 class ParquetConverter(AbstractConverter):
-    def convert(self):
+    def convert(self) -> None:
         pass

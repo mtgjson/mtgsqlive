@@ -6,7 +6,7 @@ import logging
 import pathlib
 
 import mtgsqlive
-from mtgsqlive.old import sql2csv, json2sql
+from mtgsqlive.old import json2sql, sql2csv
 
 if __name__ == "__main__":
     mtgsqlive.init_logger()

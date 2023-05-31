@@ -1,18 +1,17 @@
 import abc
 import copy
 import pathlib
-from typing import Any, Dict, TextIO, Optional, Iterator
+from typing import Any, Dict, Iterator, Optional, TextIO
 
 import humps
 
 
 class OutputObject:
-    fp: Optional[TextIO]
-    dir: pathlib.Path
+    fp: TextIO
+    root_dir: pathlib.Path
 
-    def __init__(self, fp, dir):
-        self.fp = fp
-        self.dir = dir
+    def __init__(self, root_dir: pathlib.Path):
+        self.root_dir = root_dir
 
 
 class AbstractConverter(abc.ABC):
@@ -31,20 +30,20 @@ class AbstractConverter(abc.ABC):
 
     def __init__(self, mtgjson_data: Dict[str, Any], output_path: str) -> None:
         self.mtgjson_data = mtgjson_data
-        self.output_obj = OutputObject(None, pathlib.Path(output_path).expanduser())
+        self.output_obj = OutputObject(pathlib.Path(output_path).expanduser())
 
     @abc.abstractmethod
-    def convert(self):
+    def convert(self) -> None:
         pass
 
-    def get_metadata(self):
+    def get_metadata(self) -> Iterator[Dict[str, Any]]:
         yield self.mtgjson_data.get("meta", {})
 
     def get_version(self) -> Optional[str]:
-        return self.mtgjson_data.get("meta", {}).get("version")
+        return str(self.mtgjson_data["meta"]["version"])
 
-    def get_next_set(self):
-        for set_code, set_data in self.mtgjson_data.get("data").items():
+    def get_next_set(self) -> Iterator[Dict[str, Any]]:
+        for set_data in self.mtgjson_data["data"].values():
             set_data = copy.deepcopy(set_data)
             for set_attribute in self.skipable_set_keys:
                 if set_attribute in set_data:
@@ -54,7 +53,7 @@ class AbstractConverter(abc.ABC):
     def get_next_set_field_with_normalization(
         self, set_attribute: str
     ) -> Iterator[Dict[str, Any]]:
-        for set_code, set_data in self.mtgjson_data.get("data").items():
+        for set_code, set_data in self.mtgjson_data["data"].items():
             if not set_data.get(set_attribute):
                 continue
 
@@ -65,7 +64,7 @@ class AbstractConverter(abc.ABC):
             }
 
     def get_next_card_like(self, set_attribute: str) -> Iterator[Dict[str, Any]]:
-        for set_code, set_data in self.mtgjson_data.get("data").items():
+        for set_data in self.mtgjson_data["data"].values():
             set_data = copy.deepcopy(set_data)
             for card in set_data.get(set_attribute):
                 for card_attribute in self.skipable_card_keys:
@@ -99,7 +98,7 @@ class AbstractConverter(abc.ABC):
     def get_next_card_field_with_normalization(
         self, set_attribute: str, secondary_attribute: str
     ) -> Iterator[Dict[str, Any]]:
-        for set_code, set_data in self.mtgjson_data.get("data").items():
+        for set_data in self.mtgjson_data["data"].values():
             set_data = copy.deepcopy(set_data)
             for card in set_data.get(set_attribute):
                 if isinstance(card[secondary_attribute], list):

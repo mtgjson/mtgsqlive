@@ -1,6 +1,6 @@
-from . import AbstractConverter
+from .abstract import AbstractConverter
 
 
 class PostgresqlConverter(AbstractConverter):
-    def convert(self):
+    def convert(self) -> None:
         pass

@@ -1,19 +1,19 @@
 from collections import defaultdict
 from datetime import datetime
-from typing import Optional, Any, Dict, Iterator
+from typing import Any, Dict, Iterator, Optional
 
 import humps
 import pymysql.converters
 
-from . import AbstractConverter
+from .abstract import AbstractConverter
 
-nested_dict = lambda: defaultdict(nested_dict)
+nested_dict: Any = lambda: defaultdict(nested_dict)
 
 
 class MysqlConverter(AbstractConverter):
     def __init__(self, mtgjson_data: Dict[str, Any], output_dir: str):
         super().__init__(mtgjson_data, output_dir)
-        self.output_obj.fp = self.output_obj.dir.joinpath("AllPrintings.sql").open(
+        self.output_obj.fp = self.output_obj.root_dir.joinpath("AllPrintings.sql").open(
             "w", encoding="utf-8"
         )
 
@@ -42,7 +42,9 @@ class MysqlConverter(AbstractConverter):
             self.generate_database_insert_statements()
         )
 
-    def __write_statement_chunks_to_file(self, generator, chunk_size: int = 1_000):
+    def __write_statement_chunks_to_file(
+        self, generator: Iterator[str], chunk_size: int = 1_000
+    ) -> None:
         statements = []
         for statement in generator:
             statements.append(statement)
@@ -65,7 +67,7 @@ class MysqlConverter(AbstractConverter):
         self.add_card_purchase_urls_table_schema(schema)
         self.add_set_translation_table_schema(schema)
 
-        return schema
+        return dict(schema)
 
     @staticmethod
     def add_meta_table_schema(schema: Dict[str, Any]) -> None:
@@ -73,7 +75,7 @@ class MysqlConverter(AbstractConverter):
         schema["meta"]["version"]["type"] = "TEXT"
 
     def add_set_table_schema(self, schema: Dict[str, Any]) -> None:
-        for set_code, set_data in self.mtgjson_data.get("data").items():
+        for set_data in self.mtgjson_data["data"].values():
             for set_attribute, set_attribute_data in set_data.items():
                 if set_attribute in self.skipable_set_keys:
                     continue
@@ -86,7 +88,7 @@ class MysqlConverter(AbstractConverter):
         schema["sets"]["code"]["type"] = "VARCHAR(8) UNIQUE NOT NULL"
 
     def get_card_like_schema(self, schema: Dict[str, Any], key_name: str) -> None:
-        for set_code, set_data in self.mtgjson_data.get("data").items():
+        for set_data in self.mtgjson_data["data"].values():
             for mtgjson_card in set_data.get(key_name):
                 for card_attribute, card_attribute_data in mtgjson_card.items():
                     if card_attribute in self.skipable_card_keys:
@@ -124,7 +126,7 @@ class MysqlConverter(AbstractConverter):
         iterate_subfield: bool = False,
     ) -> None:
         schema[table_name]["uuid"]["type"] = "VARCHAR(36) NOT NULL"
-        for set_code, set_data in self.mtgjson_data.get("data").items():
+        for set_data in self.mtgjson_data["data"].values():
             for mtgjson_card in set_data.get("cards"):
                 for card_field_sub_entry in mtgjson_card.get(card_field, []):
                     if iterate_subfield:
@@ -178,11 +180,11 @@ class MysqlConverter(AbstractConverter):
     def get_sql_type(mixed: Any) -> Optional[str]:
         if isinstance(mixed, (str, list, dict)):
             return "TEXT"
-        elif isinstance(mixed, bool):
+        if isinstance(mixed, bool):
             return "BOOLEAN"
-        elif isinstance(mixed, float):
+        if isinstance(mixed, float):
             return "FLOAT"
-        elif isinstance(mixed, int):
+        if isinstance(mixed, int):
             return "INTEGER"
         return None
 
