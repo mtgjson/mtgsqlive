@@ -1,6 +1,6 @@
 from collections import defaultdict
 from datetime import datetime
-from typing import Optional, Any, Dict, Iterator
+from typing import Optional, Any, Dict, Iterator, List
 
 import humps
 import pymysql.converters
@@ -18,8 +18,8 @@ class MysqlConverter(AbstractConverter):
         )
 
     def convert(self) -> None:
-        sql_schema_as_dict = self.generate_sql_schema()
-        sql_schema = self.convert_dict_to_sql_query(sql_schema_as_dict)
+        sql_schema_as_dict = self.generate_sql_schema_dict()
+        schema_query = self.convert_schema_dict_to_query(sql_schema_as_dict)
 
         header = "\n".join(
             (
@@ -30,9 +30,10 @@ class MysqlConverter(AbstractConverter):
                 "START TRANSACTION;",
                 "SET names 'utf8mb4';",
                 "",
-                sql_schema,
+                schema_query,
                 "",
                 "COMMIT;",
+                "",
                 "",
             )
         )
@@ -47,13 +48,14 @@ class MysqlConverter(AbstractConverter):
                 insert_statements = []
         self.output_obj.fp.writelines(insert_statements)
 
-    def generate_sql_schema(self) -> Dict[str, Any]:
+    def generate_sql_schema_dict(self) -> Dict[str, Any]:
         schema = nested_dict()
 
         self.add_meta_table_schema(schema)
         self.add_set_table_schema(schema)
         self.add_card_table_schema(schema)
         self.add_token_table_schema(schema)
+        self.add_card_identifiers_table_schema(schema)
         self.add_card_legalities_table_schema(schema)
         self.add_card_rulings_table_schema(schema)
         self.add_card_foreign_data_table_schema(schema)
@@ -64,43 +66,34 @@ class MysqlConverter(AbstractConverter):
     @staticmethod
     def add_meta_table_schema(schema: Dict[str, Any]) -> None:
         schema["meta"]["date"]["type"] = "DATE"
-        schema["meta"]["version"]["type"] = "VARCHAR"
+        schema["meta"]["version"]["type"] = "TEXT"
 
     def add_set_table_schema(self, schema: Dict[str, Any]) -> None:
         for set_code, set_data in self.mtgjson_data.get("data").items():
             for set_attribute, set_attribute_data in set_data.items():
-                set_attribute = humps.decamelize(set_attribute)
-
                 if set_attribute in self.skipable_set_keys:
                     continue
 
-                if set_attribute in ["code"]:
-                    schema["sets"][set_attribute][
-                        "type"
-                    ] = "VARCHAR (8) UNIQUE NOT NULL"
-                    continue
-
+                set_attribute = humps.decamelize(set_attribute)
                 schema["sets"][set_attribute]["type"] = self.get_sql_type(
                     set_attribute_data
                 )
+
+        schema["sets"]["code"]["type"] = "VARCHAR(8) UNIQUE NOT NULL"
 
     def get_card_like_schema(self, schema: Dict[str, Any], key_name: str) -> None:
         for set_code, set_data in self.mtgjson_data.get("data").items():
             for mtgjson_card in set_data.get(key_name):
                 for card_attribute, card_attribute_data in mtgjson_card.items():
-                    card_attribute = humps.decamelize(card_attribute)
-
-                    if card_attribute in [
-                        "converted_mana_cost",
-                        "legalities",
-                        "foreign_data",
-                        "rulings",
-                        "identifiers",
-                    ]:
+                    if card_attribute in self.skipable_card_keys:
                         continue
 
+                    card_attribute = humps.decamelize(card_attribute)
+
                     if card_attribute in ["uuid"]:
-                        schema["sets"][card_attribute]["type"] = "VARCHAR (36) NOT NULL"
+                        schema[key_name][card_attribute][
+                            "type"
+                        ] = "VARCHAR(36) NOT NULL"
                         continue
 
                     schema[key_name][card_attribute]["type"] = self.get_sql_type(
@@ -115,30 +108,42 @@ class MysqlConverter(AbstractConverter):
 
     @staticmethod
     def add_card_rulings_table_schema(schema: Dict[str, Any]) -> None:
-        schema["card_rulings"]["text"]["type"] = "VARCHAR"
+        schema["card_rulings"]["text"]["type"] = "TEXT"
         schema["card_rulings"]["date"]["type"] = "DATE"
 
-    @staticmethod
-    def add_card_legalities_table_schema(schema: Dict[str, Any]) -> None:
-        schema["card_legalities"]["format"]["type"] = "VARCHAR"
-        schema["card_legalities"]["status"]["type"] = "VARCHAR"
+    def __add_card_field_with_normalization(self, table_name: str, schema: Dict[str, Any], card_field: str) -> None:
+        schema[table_name]["uuid"]["type"] = "TEXT"
+        for set_code, set_data in self.mtgjson_data.get("data").items():
+            for mtgjson_card in set_data.get("cards"):
+                for card_field in mtgjson_card.get(card_field):
+                    schema[table_name][humps.decamelize(card_field)]["type"] = "TEXT"
+
+    def add_card_identifiers_table_schema(self, schema: Dict[str, Any]) -> None:
+        return self.__add_card_field_with_normalization(
+            "card_identifiers", schema, "identifiers"
+        )
+
+    def add_card_legalities_table_schema(self, schema: Dict[str, Any]) -> None:
+        return self.__add_card_field_with_normalization(
+            "card_legalities", schema, "legalities"
+        )
 
     @staticmethod
     def add_card_foreign_data_table_schema(schema: Dict[str, Any]) -> None:
-        schema["card_foreign_data"]["flavor_text"]["type"] = "VARCHAR"
-        schema["card_foreign_data"]["language"]["type"] = "VARCHAR"
+        schema["card_foreign_data"]["flavor_text"]["type"] = "TEXT"
+        schema["card_foreign_data"]["language"]["type"] = "TEXT"
         schema["card_foreign_data"]["multiverseid"]["type"] = "INTEGER"
-        schema["card_foreign_data"]["name"]["type"] = "VARCHAR"
-        schema["card_foreign_data"]["text"]["type"] = "VARCHAR"
-        schema["card_foreign_data"]["type"]["type"] = "VARCHAR"
+        schema["card_foreign_data"]["name"]["type"] = "TEXT"
+        schema["card_foreign_data"]["text"]["type"] = "TEXT"
+        schema["card_foreign_data"]["type"]["type"] = "TEXT"
 
     @staticmethod
     def add_set_translation_table_schema(schema: Dict[str, Any]) -> None:
-        schema["set_translations"]["language"]["type"] = "VARCHAR"
-        schema["set_translations"]["translation"]["type"] = "VARCHAR"
+        schema["set_translations"]["language"]["type"] = "TEXT"
+        schema["set_translations"]["translation"]["type"] = "TEXT"
 
     @staticmethod
-    def convert_dict_to_sql_query(schema: Dict[str, Any]) -> str:
+    def convert_schema_dict_to_query(schema: Dict[str, Any]) -> str:
         q = ""
         for table_name, table_data in schema.items():
             q += f"CREATE TABLE `{table_name}` (\n"
@@ -151,13 +156,8 @@ class MysqlConverter(AbstractConverter):
 
     @staticmethod
     def get_sql_type(mixed: Any) -> Optional[str]:
-        """
-        Return a string with the type of the parameter mixed
-
-        The type depends on the SQL engine in some cases
-        """
         if isinstance(mixed, (str, list, dict)):
-            return "VARCHAR"
+            return "TEXT"
         elif isinstance(mixed, bool):
             return "BOOLEAN"
         elif isinstance(mixed, float):
@@ -167,6 +167,9 @@ class MysqlConverter(AbstractConverter):
         return None
 
     def generate_database_insert_statements(self) -> Iterator[str]:
+        for statement in self.generate_insert_statement("meta", self.get_metadata()):
+            yield statement
+
         for statement in self.generate_insert_statement("sets", self.get_next_set()):
             yield statement
 
@@ -180,39 +183,43 @@ class MysqlConverter(AbstractConverter):
         ):
             yield statement
 
+        for statement in self.generate_insert_statement(
+            "card_identifiers", self.get_next_card_identifier("cards")
+        ):
+            yield statement
+
+        for statement in self.generate_insert_statement(
+            "card_legalities", self.get_next_card_legalities("cards")
+        ):
+            yield statement
+
     def generate_insert_statement(
         self, table_name: str, generator: Iterator[Any]
     ) -> Iterator[str]:
-        obj = next(generator)
-        yield self.create_insert_statement_header(table_name, obj)
-
-        while obj:
-            insert_body = self.create_insert_statement_body(obj)
-            next_obj = next(generator, None)
-
-            eol_symbol = "," if next_obj else ";"
-            yield insert_body + eol_symbol + "\n"
-
-            obj = next_obj
-
-    @staticmethod
-    def create_insert_statement_header(table: str, data: Dict[str, Any]) -> str:
-        data_keys = ", ".join(data.keys())
-        return f"INSERT INTO {table} ({data_keys}) VALUES\n"
+        for obj in generator:
+            data_keys = ", ".join(map(humps.decamelize, obj.keys()))
+            safe_values = self.create_insert_statement_body(obj)
+            yield f"INSERT INTO {table_name} ({data_keys}) VALUES ({safe_values});\n"
 
     @staticmethod
     def create_insert_statement_body(data: Dict[str, Any]) -> str:
         pre_processed_values = []
         for value in data.values():
+            if value is None:
+                pre_processed_values.append("NULL")
+                continue
+
             if isinstance(value, list):
                 pre_processed_values.append(
                     '"'
                     + pymysql.converters.escape_string(", ".join(map(str, value)))
                     + '"'
                 )
+            elif isinstance(value, bool):
+                pre_processed_values.append("1" if value else "0")
             else:
                 pre_processed_values.append(
-                    pymysql.converters.escape_string(str(value))
+                    '"' + pymysql.converters.escape_string(str(value)) + '"'
                 )
 
-        return "(" + ", ".join(pre_processed_values) + ")"
+        return ", ".join(pre_processed_values)
