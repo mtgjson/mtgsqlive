@@ -35,7 +35,7 @@ class AbstractConverter(abc.ABC):
 
     @abc.abstractmethod
     def convert(self) -> None:
-        pass
+        raise NotImplementedError()
 
     def get_metadata(self) -> Iterator[Dict[str, Any]]:
         yield self.mtgjson_data.get("meta", {})
