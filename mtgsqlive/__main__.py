@@ -1,72 +1,121 @@
-"""
-Main Executor
-"""
 import argparse
+import json
 import logging
 import pathlib
+from collections import OrderedDict
+from datetime import datetime
+from typing import Any, Dict
 
-import mtgsqlive
-from mtgsqlive import sql2csv, json2sql
+from mtgsqlive.converters import (
+    CsvConverter,
+    MysqlConverter,
+    ParquetConverter,
+    PostgresqlConverter,
+    SqliteConverter,
+)
 
-if __name__ == "__main__":
-    mtgsqlive.init_logger()
+TOP_LEVEL_DIR: pathlib.Path = pathlib.Path(__file__).resolve().parent.parent
+LOG_DIR: pathlib.Path = TOP_LEVEL_DIR.joinpath("logs")
+LOGGER = logging.getLogger(__name__)
 
+
+def init_logger() -> None:
+    LOG_DIR.mkdir(exist_ok=True)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="[%(levelname)s] %(asctime)s: %(message)s",
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler(
+                str(
+                    LOG_DIR.joinpath(
+                        "mtgsqlive_"
+                        + str(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                        + ".log"
+                    )
+                )
+            ),
+        ],
+    )
+
+
+def get_converters() -> Dict[str, Any]:
+    return OrderedDict(
+        {
+            "mysql": MysqlConverter,
+            "postgresql": PostgresqlConverter,
+            "sqlite": SqliteConverter,
+            "csv": CsvConverter,
+            "parquet": ParquetConverter,
+        }
+    )
+
+
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
+
     parser.add_argument(
         "-i",
-        help="input source (AllPrintings.json)",
+        "--input-file",
+        type=str,
         required=True,
-        metavar="fileIn",
+        help="Path to MTGJSON AllPrintings.json",
     )
     parser.add_argument(
         "-o",
-        help="output folder (outputs/)",
-        default="outputs",
-        required=True,
-        metavar="fileOut",
+        "--output-dir",
+        type=str,
+        default="/tmp/mtgsqlive",
+        help="Where to place translated files",
     )
-    parser.add_argument(
-        "--all",
-        help="Build all types (SQLite, SQL, CSV)",
-        action="store_true",
-        required=False,
+
+    converter_group = parser.add_argument_group(title="Converters")
+    converter_group.add_argument(
+        "--all", action="store_true", help="Run all ETL operations"
     )
-    parser.add_argument(
-        "-x",
-        help="Check for extra input files",
-        action="store_true",
-        required=False,
+    converter_group.add_argument(
+        "--csv", action="store_true", help="Compile CSV AllPrinting files"
     )
-    args = parser.parse_args()
+    converter_group.add_argument(
+        "--mysql", action="store_true", help="Compile AllPrintings.sql"
+    )
+    converter_group.add_argument(
+        "--parquet", action="store_true", help="Compile Parquet AllPrinting files"
+    )
+    converter_group.add_argument(
+        "--postgresql", action="store_true", help="Compile AllPrintings.psql"
+    )
+    converter_group.add_argument(
+        "--sqlite", action="store_true", help="Compile AllPrintings.sqlite"
+    )
 
-    # Define our I/O paths
-    input_file = pathlib.Path(args.i).expanduser()
-    output_file = {"path": pathlib.Path(args.o).expanduser().absolute(), "handle": None}
+    return parser.parse_args()
 
-    if args.all:
-        logging.info("> Creating AllPrintings.sqlite")
-        json2sql.execute(
-            input_file,
-            {
-                "path": output_file["path"].joinpath("AllPrintings.sqlite"),
-                "handle": None,
-            },
-            args.x,
-        )
 
-        logging.info("> Creating AllPrintings.sql")
-        json2sql.execute(
-            input_file,
-            {"path": output_file["path"].joinpath("AllPrintings.sql"), "handle": None},
-            args.x,
-        )
+def main() -> None:
+    init_logger()
 
-        logging.info("> Creating AllPrintings CSV components")
-        sql2csv.execute(
-            output_file["path"].joinpath("AllPrintings.sqlite"),
-            {"path": output_file["path"].joinpath("csv"), "handle": None},
-        )
-    elif str(input_file).endswith(".sqlite"):
-        sql2csv.execute(input_file, output_file)
-    else:
-        json2sql.execute(input_file, output_file, args.x)
+    args = parse_args()
+
+    mtgjson_input_file = pathlib.Path(args.input_file).expanduser()
+    if not mtgjson_input_file.exists():
+        LOGGER.error(f"Cannot locate {mtgjson_input_file}, exiting.")
+        return
+
+    with mtgjson_input_file.open(encoding="utf-8") as fp:
+        mtgjson_input_data = json.load(fp)
+
+    converters_map = get_converters()
+    if not args.all:
+        for converter_input_param, converter in converters_map.copy().items():
+            if not getattr(args, converter_input_param):
+                del converters_map[converter_input_param]
+
+    for converter in converters_map.values():
+        LOGGER.info(f"Starting conversion via {converter.__name__}")
+        converter(mtgjson_input_data, args.output_dir).convert()
+        LOGGER.info(f"Finished conversion via {converter.__name__}")
+
+
+if __name__ == "__main__":
+    main()
