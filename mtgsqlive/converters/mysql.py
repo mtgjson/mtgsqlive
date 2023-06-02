@@ -3,7 +3,7 @@ from typing import Any, Dict, Iterator
 
 import pymysql.converters
 
-from .sqllike import SqlLikeConverter
+from .parents import SqlLikeConverter
 
 
 class MysqlConverter(SqlLikeConverter):

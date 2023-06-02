@@ -5,3 +5,4 @@ PyMySQL==1.0.3
 setuptools==67.8.0
 mysql-connector-python==8.0.33
 pyhumps==3.8.0
+pyarrow==12.0.0

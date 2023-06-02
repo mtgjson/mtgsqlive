@@ -4,7 +4,7 @@ from typing import Any, Dict, Iterator
 
 import pymysql
 
-from .sqllike import SqlLikeConverter
+from .parents import SqlLikeConverter
 
 nested_dict: Any = lambda: defaultdict(nested_dict)
 

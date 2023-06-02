@@ -43,10 +43,10 @@ def get_converters() -> Dict[str, Any]:
     return OrderedDict(
         {
             "mysql": MysqlConverter,
+            "postgresql": PostgresqlConverter,
             "sqlite": SqliteConverter,
             "csv": CsvConverter,
             "parquet": ParquetConverter,
-            "postgresql": PostgresqlConverter,
         }
     )
 
@@ -64,6 +64,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("-o", "--output-dir", type=str, default="~/Desktop/")
 
     converter_group = parser.add_argument_group(title="Converter Types")
+    converter_group.add_argument(
+        "--all", action="store_true", help="Compile all format types"
+    )
     converter_group.add_argument(
         "--csv", action="store_true", help="Compile AllPrintings.csv"
     )
@@ -97,14 +100,15 @@ def main() -> None:
         mtgjson_input_data = json.load(fp)
 
     converters_map = get_converters()
-    for converter_input_param, converter in converters_map.copy().items():
-        if not getattr(args, converter_input_param):
-            del converters_map[converter_input_param]
+    if not args.all:
+        for converter_input_param, converter in converters_map.copy().items():
+            if not getattr(args, converter_input_param):
+                del converters_map[converter_input_param]
 
     for converter in converters_map.values():
-        LOGGER.info(f"Starting MTGJSON conversion using {converter.__name__}")
+        LOGGER.info(f"Starting conversion via {converter.__name__}")
         converter(mtgjson_input_data, args.output_dir).convert()
-        LOGGER.info(f"Finished MTGJSON conversion using {converter.__name__}")
+        LOGGER.info(f"Finished conversion via {converter.__name__}")
 
 
 if __name__ == "__main__":
