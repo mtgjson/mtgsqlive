@@ -21,7 +21,7 @@ class SqliteConverter(SqlLikeConverter):
     def convert(self) -> None:
         sql_schema_as_dict = self._generate_sql_schema_dict()
         schema_query = self._convert_schema_dict_to_query(
-            sql_schema_as_dict, engine="", primary_key_op=""
+            sql_schema_as_dict, engine="", primary_key_op="INTEGER"
         )
 
         self.output_obj.fp.executescript(schema_query)

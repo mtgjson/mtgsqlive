@@ -18,13 +18,13 @@ class MysqlConverter(SqlLikeConverter):
         schema_query = self._convert_schema_dict_to_query(
             sql_schema_as_dict,
             engine="ENGINE=InnoDB DEFAULT CHARSET=utf8mb4",
-            primary_key_op="PRIMARY KEY AUTO_INCREMENT",
+            primary_key_op="INTEGER PRIMARY KEY AUTO_INCREMENT",
         )
 
         header = "\n".join(
             (
                 "-- MTGSQLive Output File",
-                f"-- {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+                f"-- {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
                 f"-- MTGJSON Version: {self.get_version()}",
                 "",
                 "START TRANSACTION;",

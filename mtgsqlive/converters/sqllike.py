@@ -173,8 +173,8 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
     ) -> str:
         q = ""
         for table_name, table_data in schema.items():
-            q += f"CREATE TABLE `{table_name}` (\n"
-            q += f"\tid INTEGER {primary_key_op},\n"
+            q += f"CREATE TABLE {table_name} (\n"
+            q += f"\tid {primary_key_op},\n"
             for attribute in sorted(table_data.keys()):
                 q += f"\t{attribute} {table_data[attribute]['type']},\n"
             q = f"{q[:-2]}\n){engine};\n\n"
