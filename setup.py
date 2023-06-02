@@ -1,18 +1,15 @@
-"""Installation setup for MTGSQLite."""
-
 import pathlib
 import setuptools
 
 project_root: pathlib.Path = pathlib.Path(__file__).resolve().parent
 
-# Necessary for TOX
 setuptools.setup(
     name="MTGSQLite",
     version="0.3",
     author="Zach Halpern",
     author_email="zach@mtgjson.com",
     url="https://github.com/mtgjson/mtgsqlive/",
-    description="Convert MTGJSONv5 JSON files into alternative formats for Magic: The Gathering",
+    description="Convert MTGJSON files into alternative formats",
     long_description=project_root.joinpath("README.md").open(encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     license="MIT",

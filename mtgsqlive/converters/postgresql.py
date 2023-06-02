@@ -7,7 +7,7 @@ from .parents import SqlLikeConverter
 
 
 class PostgresqlConverter(SqlLikeConverter):
-    def __init__(self, mtgjson_data: Dict[str, Any], output_dir: str):
+    def __init__(self, mtgjson_data: Dict[str, Any], output_dir: str) -> None:
         super().__init__(mtgjson_data, output_dir)
         self.output_obj.fp = self.output_obj.root_dir.joinpath(
             "AllPrintings.psql"

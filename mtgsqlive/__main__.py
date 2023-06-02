@@ -59,22 +59,28 @@ def parse_args() -> argparse.Namespace:
         "--input-file",
         type=str,
         required=True,
-        help="MTGJSON v5 AllPrintings.json path",
+        help="Path to MTGJSON AllPrintings.json",
     )
-    parser.add_argument("-o", "--output-dir", type=str, default="~/Desktop/")
+    parser.add_argument(
+        "-o",
+        "--output-dir",
+        type=str,
+        default="/tmp/mtgsqlive",
+        help="Where to place translated files",
+    )
 
-    converter_group = parser.add_argument_group(title="Converter Types")
+    converter_group = parser.add_argument_group(title="Converters")
     converter_group.add_argument(
-        "--all", action="store_true", help="Compile all format types"
+        "--all", action="store_true", help="Run all ETL operations"
     )
     converter_group.add_argument(
-        "--csv", action="store_true", help="Compile AllPrintings.csv"
+        "--csv", action="store_true", help="Compile CSV AllPrinting files"
     )
     converter_group.add_argument(
         "--mysql", action="store_true", help="Compile AllPrintings.sql"
     )
     converter_group.add_argument(
-        "--parquet", action="store_true", help="Compile AllPrintings.parquet"
+        "--parquet", action="store_true", help="Compile Parquet AllPrinting files"
     )
     converter_group.add_argument(
         "--postgresql", action="store_true", help="Compile AllPrintings.psql"

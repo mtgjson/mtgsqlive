@@ -1,39 +1,37 @@
-# [**MTGSQLive**](https://mtgjson.com/)
+# MTGSQLive
+A project to ETL MTGJSON data into multiple other consumer formats
 
 # Connect With Us
 Discord via [![Discord](https://img.shields.io/discord/224178957103136779.svg)](https://discord.gg/74GUQDE)
 
-Gitter via [![Gitter](https://img.shields.io/gitter/room/nwjs/nw.js.svg)](https://gitter.im/mtgjson/mtgjson4)
-
-
-### Goals
-The goals of this project are to extend the MTGJSONv5 protocols and give an option for pre-processed SQLite downloads.
-lly edit it to be correct. Once that is accomplished, we are then no longer dependent on them for card data, except for rullings.
-
 # About Us
 
-MTGJSON and MTGSQlive are open sourced database creation and distribution tool for [*Magic: The Gathering*](https://magic.wizards.com/) cards, specifically in [JSON](https://json.org/) and [SQLite](https://www.sqlite.org/index.html) format.
+MTGJSON and MTGSQLive are open sourced database creation and distribution tool for [*Magic: The Gathering*](https://magic.wizards.com/) cards.
 
 You can find our documentation with all properties [here](https://mtgjson.com/data-models/).
 
-To provide feedback and/or bug reports, please [open a ticket](https://github.com/mtgjson/mtgsqlite/issues/new/) as it is the best way for us to communicate with the public.
+To provide feedback or to report a bug, please [open a ticket](https://github.com/mtgjson/mtgsqlite/issues/new/).
 
 If you would like to join or assist the development of the project, you can [join us on Discord](https://mtgjson.com/discord) to discuss things further.
 
-# How To Use
+# Usage
+```bash
+$ pip install -r requirements.txt
 
->**Note:** These are the build directions to compile your own SQLite file.<br>
->If you are looking for the pre-compiled SQLite file, you can download it from [MTGJSON.com](https://mtgjson.com/).
+$ python3 -m mtgsqlive [--args]
 
-This system was built using *Python 3.7*, so we can only guarantee proper functionality with this version.
+options:
+  -h, --help            show this help message and exit
+  -i INPUT_FILE, --input-file INPUT_FILE
+                        Path to MTGJSON AllPrintings.json
+  -o OUTPUT_DIR, --output-dir OUTPUT_DIR
+                        Where to place translated files
 
-
-
-```sh
-# Install dependencies
-$ pip3 install -r requirements.txt 
-
-# usage: mtgsqlive [-h] -i file -o file 
-$ python3 -m mtgsqlive -i /path/to/AllPrintings.json -o /path/to/output.sqlite
-
-```  
+Converters:
+  --all                 Run all ETL operations
+  --csv                 Compile CSV AllPrinting files
+  --mysql               Compile AllPrintings.sql
+  --parquet             Compile Parquet AllPrinting files
+  --postgresql          Compile AllPrintings.psql
+  --sqlite              Compile AllPrintings.sqlite
+```
