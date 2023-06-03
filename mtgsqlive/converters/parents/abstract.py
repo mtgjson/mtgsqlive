@@ -102,6 +102,9 @@ class AbstractConverter(abc.ABC):
         for set_data in self.mtgjson_data["data"].values():
             set_data = copy.deepcopy(set_data)
             for card in set_data.get(set_attribute):
+                if secondary_attribute not in card:
+                    continue
+
                 if isinstance(card[secondary_attribute], list):
                     for sub_entity in card[secondary_attribute]:
                         yield self.__camelize_and_normalize_card(sub_entity, card)
