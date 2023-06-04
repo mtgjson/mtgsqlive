@@ -2,12 +2,15 @@ from typing import Any, Dict
 
 import pandas as pd
 
+from ..enums.data_type import MtgjsonDataType
 from .parents import SqliteBasedConverter
 
 
 class CsvConverter(SqliteBasedConverter):
-    def __init__(self, mtgjson_data: Dict[str, Any], output_dir: str) -> None:
-        super().__init__(mtgjson_data, output_dir)
+    def __init__(
+        self, mtgjson_data: Dict[str, Any], output_dir: str, data_type: MtgjsonDataType
+    ) -> None:
+        super().__init__(mtgjson_data, output_dir, data_type)
         self.output_obj.root_dir.joinpath("csv").mkdir(parents=True, exist_ok=True)
 
     def convert(self) -> None:

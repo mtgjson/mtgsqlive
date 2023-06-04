@@ -6,6 +6,8 @@ from typing import Any, Dict, Iterator, Optional, TextIO
 
 import humps
 
+from ...enums.data_type import MtgjsonDataType
+
 
 class OutputObject:
     fp: TextIO | Connection
@@ -18,6 +20,7 @@ class OutputObject:
 class AbstractConverter(abc.ABC):
     mtgjson_data: Dict[str, Any]
     output_obj: OutputObject
+    data_type: MtgjsonDataType
 
     skipable_set_keys = ["booster", "cards", "sealedProduct", "tokens", "translations"]
     skipable_card_keys = [
@@ -29,9 +32,12 @@ class AbstractConverter(abc.ABC):
         "rulings",
     ]
 
-    def __init__(self, mtgjson_data: Dict[str, Any], output_dir: str) -> None:
+    def __init__(
+        self, mtgjson_data: Dict[str, Any], output_dir: str, data_type: MtgjsonDataType
+    ) -> None:
         self.mtgjson_data = mtgjson_data
         self.output_obj = OutputObject(pathlib.Path(output_dir).expanduser())
+        self.data_type = data_type
 
     @abc.abstractmethod
     def convert(self) -> None:
@@ -119,3 +125,34 @@ class AbstractConverter(abc.ABC):
     ) -> Dict[str, Any]:
         entity["uuid"] = card.get("uuid")
         return {humps.camelize(key): value for key, value in entity.items()}
+
+    def get_next_card_price(self) -> Iterator[Dict[str, str]]:
+        for card_uuid, card_uuid_data in self.mtgjson_data["data"].items():
+            for game_availability, game_availability_data in card_uuid_data.items():
+                for (
+                    price_provider,
+                    price_provider_data,
+                ) in game_availability_data.items():
+                    currency = price_provider_data["currency"]
+                    for (
+                        provider_listing,
+                        provider_listing_data,
+                    ) in price_provider_data.items():
+                        if provider_listing == "currency":
+                            continue
+
+                        for (
+                            card_finish,
+                            card_finish_data,
+                        ) in provider_listing_data.items():
+                            for price_date, price_amount in card_finish_data.items():
+                                yield {
+                                    "uuid": card_uuid,
+                                    "game_availability": game_availability,
+                                    "price_provider": price_provider,
+                                    "provider_listing": provider_listing,
+                                    "card_finish": card_finish,
+                                    "date": price_date,
+                                    "price": price_amount,
+                                    "currency": currency,
+                                }

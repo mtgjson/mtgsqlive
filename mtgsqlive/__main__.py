@@ -13,6 +13,7 @@ from mtgsqlive.converters import (
     PostgresqlConverter,
     SqliteConverter,
 )
+from mtgsqlive.enums.data_type import MtgjsonDataType
 
 TOP_LEVEL_DIR: pathlib.Path = pathlib.Path(__file__).resolve().parent.parent
 LOG_DIR: pathlib.Path = TOP_LEVEL_DIR.joinpath("logs")
@@ -56,10 +57,10 @@ def parse_args() -> argparse.Namespace:
 
     parser.add_argument(
         "-i",
-        "--input-file",
+        "--input-dir",
         type=str,
         required=True,
-        help="Path to MTGJSON AllPrintings.json",
+        help="Path to directory that has MTGJSON compiled files, like AllPrintings.json and AllPrices.json",
     )
     parser.add_argument(
         "-o",
@@ -97,24 +98,26 @@ def main() -> None:
 
     args = parse_args()
 
-    mtgjson_input_file = pathlib.Path(args.input_file).expanduser()
-    if not mtgjson_input_file.exists():
-        LOGGER.error(f"Cannot locate {mtgjson_input_file}, exiting.")
-        return
-
-    with mtgjson_input_file.open(encoding="utf-8") as fp:
-        mtgjson_input_data = json.load(fp)
-
     converters_map = get_converters()
     if not args.all:
         for converter_input_param, converter in converters_map.copy().items():
             if not getattr(args, converter_input_param):
                 del converters_map[converter_input_param]
 
-    for converter in converters_map.values():
-        LOGGER.info(f"Starting conversion via {converter.__name__}")
-        converter(mtgjson_input_data, args.output_dir).convert()
-        LOGGER.info(f"Finished conversion via {converter.__name__}")
+    mtgjson_input_dir = pathlib.Path(args.input_dir).expanduser()
+    for data_type in MtgjsonDataType:
+        mtgjson_input_file = mtgjson_input_dir.joinpath(f"{data_type.value}.json")
+        if not mtgjson_input_file.exists():
+            LOGGER.error(f"Cannot locate {mtgjson_input_file}, skipping.")
+            continue
+
+        with mtgjson_input_file.open(encoding="utf-8") as fp:
+            mtgjson_input_data = json.load(fp)
+
+        for converter in converters_map.values():
+            LOGGER.info(f"Converting {data_type.value} via {converter.__name__}")
+            converter(mtgjson_input_data, args.output_dir, data_type).convert()
+            LOGGER.info(f"Converted {data_type.value} via {converter.__name__}")
 
 
 if __name__ == "__main__":

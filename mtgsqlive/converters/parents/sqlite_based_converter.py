@@ -1,16 +1,19 @@
 import sqlite3
 from typing import Any, Dict, Iterator
 
+from ...enums.data_type import MtgjsonDataType
 from .abstract import AbstractConverter
 
 
 class SqliteBasedConverter(AbstractConverter):
     sqlite_db: sqlite3.Connection
 
-    def __init__(self, mtgjson_dict: Dict[str, Any], output_dir: str) -> None:
-        super().__init__(mtgjson_dict, output_dir)
+    def __init__(
+        self, mtgjson_data: Dict[str, Any], output_dir: str, data_type: MtgjsonDataType
+    ) -> None:
+        super().__init__(mtgjson_data, output_dir, data_type)
 
-        db_path = self.output_obj.root_dir.joinpath("AllPrintings.sqlite")
+        db_path = self.output_obj.root_dir.joinpath(f"{data_type.value}.sqlite")
         if not db_path.exists():
             raise FileNotFoundError()
 

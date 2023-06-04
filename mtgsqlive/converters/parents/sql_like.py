@@ -4,6 +4,7 @@ from typing import Any, Dict, Iterator, List, Optional
 
 import humps
 
+from ...enums.data_type import MtgjsonDataType
 from .abstract import AbstractConverter
 
 nested_dict: Any = lambda: defaultdict(nested_dict)
@@ -19,11 +20,18 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
         raise NotImplementedError()
 
     def generate_database_insert_statements(self) -> Iterator[str]:
-        for generator in self.__get_local_generators():
+        if self.data_type == MtgjsonDataType.MTGJSON_CARDS:
+            generators = self.__get_mtgjson_card_generators()
+        elif self.data_type == MtgjsonDataType.MTGJSON_CARD_PRICES:
+            generators = self.__get_mtgjson_card_prices_generators()
+        else:
+            raise ValueError()
+
+        for generator in generators:
             for statement in generator:
                 yield statement
 
-    def __get_local_generators(self) -> List[Iterator[str]]:
+    def __get_mtgjson_card_generators(self) -> List[Iterator[str]]:
         return [
             self.__generate_insert_statement("meta", self.get_metadata()),
             self.__generate_insert_statement("sets", self.get_next_set()),
@@ -52,6 +60,13 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
             ),
         ]
 
+    def __get_mtgjson_card_prices_generators(self) -> List[Iterator[str]]:
+        return [
+            self.__generate_batch_insert_statement(
+                "card_prices", self.get_next_card_price()
+            )
+        ]
+
     def __generate_insert_statement(
         self, table_name: str, data_generator: Iterator[Dict[str, Any]]
     ) -> Iterator[str]:
@@ -60,19 +75,39 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
             safe_values = self.create_insert_statement_body(obj)
             yield f"INSERT INTO {table_name} ({data_keys}) VALUES ({safe_values});\n"
 
+    def __generate_batch_insert_statement(
+        self, table_name: str, data_generator: Iterator[Dict[str, Any]]
+    ) -> Iterator[str]:
+        insert_values = []
+        for obj in data_generator:
+            data_keys = ", ".join(map(humps.decamelize, obj.keys()))
+            safe_values = f"({self.create_insert_statement_body(obj)})"
+            insert_values.append(safe_values)
+
+            if len(insert_values) >= 2_000:
+                yield_values = ",\n".join(insert_values)
+                insert_values = []
+                yield f"INSERT INTO {table_name} ({data_keys}) VALUES\n{yield_values};\n"
+
+        yield_values = "\n,".join(insert_values)
+        yield f"INSERT INTO {table_name} ({data_keys}) VALUES {yield_values};\n"
+
     def _generate_sql_schema_dict(self) -> Dict[str, Any]:
         schema = nested_dict()
 
-        self._add_meta_table_schema(schema)
-        self._add_set_table_schema(schema)
-        self._add_card_table_schema(schema)
-        self._add_token_table_schema(schema)
-        self._add_card_identifiers_table_schema(schema)
-        self._add_card_legalities_table_schema(schema)
-        self._add_card_rulings_table_schema(schema)
-        self._add_card_foreign_data_table_schema(schema)
-        self._add_card_purchase_urls_table_schema(schema)
-        self._add_set_translation_table_schema(schema)
+        if self.data_type == MtgjsonDataType.MTGJSON_CARDS:
+            self._add_meta_table_schema(schema)
+            self._add_set_table_schema(schema)
+            self._add_card_table_schema(schema)
+            self._add_token_table_schema(schema)
+            self._add_card_identifiers_table_schema(schema)
+            self._add_card_legalities_table_schema(schema)
+            self._add_card_rulings_table_schema(schema)
+            self._add_card_foreign_data_table_schema(schema)
+            self._add_card_purchase_urls_table_schema(schema)
+            self._add_set_translation_table_schema(schema)
+        elif self.data_type == MtgjsonDataType.MTGJSON_CARD_PRICES:
+            self._add_all_prices_schema(schema)
 
         return dict(schema)
 
@@ -164,6 +199,17 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
         schema["set_translations"]["language"]["type"] = "TEXT"
         schema["set_translations"]["translation"]["type"] = "TEXT"
         schema["set_translations"]["uuid"]["type"] = "VARCHAR(36) NOT NULL"
+
+    @staticmethod
+    def _add_all_prices_schema(schema: Dict[str, Any]) -> None:
+        schema["card_prices"]["game_availability"]["type"] = "VARCHAR(15)"
+        schema["card_prices"]["price_provider"]["type"] = "VARCHAR(20)"
+        schema["card_prices"]["provider_listing"]["type"] = "VARCHAR(15)"
+        schema["card_prices"]["card_finish"]["type"] = "VARCHAR(15)"
+        schema["card_prices"]["date"]["type"] = "DATE"
+        schema["card_prices"]["price"]["type"] = "FLOAT"
+        schema["card_prices"]["currency"]["type"] = "VARCHAR(10)"
+        schema["card_prices"]["uuid"]["type"] = "VARCHAR(36) NOT NULL"
 
     @staticmethod
     def _convert_schema_dict_to_query(
