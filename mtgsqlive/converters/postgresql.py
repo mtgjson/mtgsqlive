@@ -3,14 +3,17 @@ from typing import Any, Dict, Iterator
 
 import pymysql
 
+from ..enums.data_type import MtgjsonDataType
 from .parents import SqlLikeConverter
 
 
 class PostgresqlConverter(SqlLikeConverter):
-    def __init__(self, mtgjson_data: Dict[str, Any], output_dir: str) -> None:
-        super().__init__(mtgjson_data, output_dir)
+    def __init__(
+        self, mtgjson_data: Dict[str, Any], output_dir: str, data_type: MtgjsonDataType
+    ) -> None:
+        super().__init__(mtgjson_data, output_dir, data_type)
         self.output_obj.fp = self.output_obj.root_dir.joinpath(
-            "AllPrintings.psql"
+            f"{data_type.value}.psql"
         ).open("w", encoding="utf-8")
 
     def convert(self) -> None:

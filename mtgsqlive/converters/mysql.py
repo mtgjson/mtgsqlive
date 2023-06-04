@@ -4,14 +4,17 @@ from typing import Any, Dict, Iterator
 import pymysql.converters
 
 from .parents import SqlLikeConverter
+from .parents.sql_like import MtgjsonDataType
 
 
 class MysqlConverter(SqlLikeConverter):
-    def __init__(self, mtgjson_data: Dict[str, Any], output_dir: str):
-        super().__init__(mtgjson_data, output_dir)
-        self.output_obj.fp = self.output_obj.root_dir.joinpath("AllPrintings.sql").open(
-            "w", encoding="utf-8"
-        )
+    def __init__(
+        self, mtgjson_data: Dict[str, Any], output_dir: str, data_type: MtgjsonDataType
+    ):
+        super().__init__(mtgjson_data, output_dir, data_type)
+        self.output_obj.fp = self.output_obj.root_dir.joinpath(
+            f"{data_type.value}.sql"
+        ).open("w", encoding="utf-8")
 
     def convert(self) -> None:
         sql_schema_as_dict = self._generate_sql_schema_dict()

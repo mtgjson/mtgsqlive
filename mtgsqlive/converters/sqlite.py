@@ -4,24 +4,27 @@ from typing import Any, Dict, Iterator
 
 import pymysql
 
+from ..enums.data_type import MtgjsonDataType
 from .parents import SqlLikeConverter
 
 nested_dict: Any = lambda: defaultdict(nested_dict)
 
 
 class SqliteConverter(SqlLikeConverter):
-    def __init__(self, mtgjson_data: Dict[str, Any], output_dir: str) -> None:
-        super().__init__(mtgjson_data, output_dir)
+    def __init__(
+        self, mtgjson_data: Dict[str, Any], output_dir: str, data_type: MtgjsonDataType
+    ) -> None:
+        super().__init__(mtgjson_data, output_dir, data_type)
 
         self.output_obj.fp = sqlite3.connect(
-            self.output_obj.root_dir.joinpath("AllPrintings.sqlite")
+            self.output_obj.root_dir.joinpath(f"{data_type.value}.sqlite")
         )
         self.output_obj.fp.execute("pragma journal_mode=wal;")
 
     def convert(self) -> None:
         sql_schema_as_dict = self._generate_sql_schema_dict()
         schema_query = self._convert_schema_dict_to_query(
-            sql_schema_as_dict, engine="", primary_key_op="INTEGER"
+            sql_schema_as_dict, engine="", primary_key_op=None
         )
 
         self.output_obj.fp.executescript(schema_query)
