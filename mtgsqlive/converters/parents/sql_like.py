@@ -1,4 +1,5 @@
 import abc
+import datetime
 from collections import defaultdict
 from typing import Any, Dict, Iterator, List, Optional
 
@@ -63,7 +64,10 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
     def __get_mtgjson_card_prices_generators(self) -> List[Iterator[str]]:
         return [
             self.__generate_batch_insert_statement(
-                "card_prices", self.get_next_card_price()
+                "card_prices",
+                self.get_next_card_price(
+                    datetime.date.today() - datetime.timedelta(days=14)
+                ),
             )
         ]
 
@@ -215,12 +219,13 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
     def _convert_schema_dict_to_query(
         schema: Dict[str, Any],
         engine: str,
-        primary_key_op: str,
+        primary_key_op: Optional[str],
     ) -> str:
         q = ""
         for table_name, table_data in schema.items():
             q += f"CREATE TABLE {table_name} (\n"
-            q += f"\tid {primary_key_op},\n"
+            if primary_key_op:
+                q += f"\tid {primary_key_op},\n"
             for attribute in sorted(table_data.keys()):
                 q += f"\t{attribute} {table_data[attribute]['type']},\n"
             q = f"{q[:-2]}\n){engine};\n\n"

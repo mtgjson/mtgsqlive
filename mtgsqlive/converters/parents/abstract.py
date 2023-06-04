@@ -1,5 +1,6 @@
 import abc
 import copy
+import datetime
 import pathlib
 from sqlite3 import Connection
 from typing import Any, Dict, Iterator, Optional, TextIO
@@ -126,7 +127,12 @@ class AbstractConverter(abc.ABC):
         entity["uuid"] = card.get("uuid")
         return {humps.camelize(key): value for key, value in entity.items()}
 
-    def get_next_card_price(self) -> Iterator[Dict[str, str]]:
+    def get_next_card_price(
+        self,
+        oldest_date: datetime.date,
+    ) -> Iterator[Dict[str, str]]:
+        oldest_date_str = str(oldest_date)
+
         for card_uuid, card_uuid_data in self.mtgjson_data["data"].items():
             for game_availability, game_availability_data in card_uuid_data.items():
                 for (
@@ -146,6 +152,8 @@ class AbstractConverter(abc.ABC):
                             card_finish_data,
                         ) in provider_listing_data.items():
                             for price_date, price_amount in card_finish_data.items():
+                                if price_date < oldest_date_str:
+                                    continue
                                 yield {
                                     "uuid": card_uuid,
                                     "game_availability": game_availability,

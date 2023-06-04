@@ -26,4 +26,5 @@ class CsvConverter(SqliteBasedConverter):
                     )
                 ),
                 encoding="utf-8",
+                index=False
             )
