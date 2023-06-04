@@ -90,7 +90,7 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
                 yield f"INSERT INTO {table_name} ({data_keys}) VALUES\n{yield_values};\n"
 
         yield_values = "\n,".join(insert_values)
-        yield f"INSERT INTO {table_name} ({data_keys}) VALUES {yield_values};\n"
+        yield f"INSERT INTO {table_name} ({data_keys}) VALUES\n{yield_values};\n"
 
     def _generate_sql_schema_dict(self) -> Dict[str, Any]:
         schema = nested_dict()
