@@ -2,7 +2,7 @@ from typing import Any, Dict
 
 import pandas as pd
 
-from ..enums.data_type import MtgjsonDataType
+from ..enums import MtgjsonDataType
 from .parents import SqliteBasedConverter
 
 
@@ -26,5 +26,5 @@ class CsvConverter(SqliteBasedConverter):
                     )
                 ),
                 encoding="utf-8",
-                index=False
+                index=False,
             )

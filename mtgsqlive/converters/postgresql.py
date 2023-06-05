@@ -3,7 +3,7 @@ from typing import Any, Dict, Iterator
 
 import pymysql
 
-from ..enums.data_type import MtgjsonDataType
+from ..enums import MtgjsonDataType
 from .parents import SqlLikeConverter
 
 

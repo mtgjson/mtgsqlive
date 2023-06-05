@@ -4,7 +4,7 @@ import pandas as pd
 import pyarrow
 import pyarrow.parquet
 
-from ..enums.data_type import MtgjsonDataType
+from ..enums import MtgjsonDataType
 from .parents import SqliteBasedConverter
 
 

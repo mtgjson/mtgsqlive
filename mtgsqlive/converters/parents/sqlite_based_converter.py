@@ -1,7 +1,7 @@
 import sqlite3
 from typing import Any, Dict, Iterator
 
-from ...enums.data_type import MtgjsonDataType
+from ...enums import MtgjsonDataType
 from .abstract import AbstractConverter
 
 

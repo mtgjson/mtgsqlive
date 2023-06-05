@@ -7,7 +7,7 @@ from typing import Any, Dict, Iterator, Optional, TextIO
 
 import humps
 
-from ...enums.data_type import MtgjsonDataType
+from ...enums import MtgjsonDataType
 
 
 class OutputObject:

@@ -5,7 +5,7 @@ from typing import Any, Dict, Iterator, List, Optional
 
 import humps
 
-from ...enums.data_type import MtgjsonDataType
+from ...enums import MtgjsonDataType
 from .abstract import AbstractConverter
 
 nested_dict: Any = lambda: defaultdict(nested_dict)
