@@ -56,6 +56,9 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
                 "card_purchase_urls", self.get_next_card_purchase_url_entry("cards")
             ),
             self.__generate_insert_statement(
+                "token_identifiers", self.get_next_card_identifier("tokens")
+            ),
+            self.__generate_insert_statement(
                 "set_translations",
                 self.get_next_set_field_with_normalization("translations"),
             ),
@@ -109,6 +112,7 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
             self._add_card_rulings_table_schema(schema)
             self._add_card_foreign_data_table_schema(schema)
             self._add_card_purchase_urls_table_schema(schema)
+            self._add_token_identifiers_table_schema(schema)
             self._add_set_translation_table_schema(schema)
         elif self.data_type == MtgjsonDataType.MTGJSON_CARD_PRICES:
             self._add_all_prices_schema(schema)
@@ -196,6 +200,11 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
     def _add_card_purchase_urls_table_schema(self, schema: Dict[str, Any]) -> None:
         return self.__add_card_field_with_normalization(
             "card_purchase_urls", schema, "purchaseUrls"
+        )
+
+    def _add_token_identifiers_table_schema(self, schema: Dict[str, Any]) -> None:
+        return self.__add_card_field_with_normalization(
+            "token_identifiers", schema, "identifiers"
         )
 
     @staticmethod
