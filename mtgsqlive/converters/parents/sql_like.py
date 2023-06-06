@@ -3,8 +3,6 @@ import datetime
 from collections import defaultdict
 from typing import Any, Dict, Iterator, List, Optional
 
-import humps
-
 from ...enums import MtgjsonDataType
 from .abstract import AbstractConverter
 
@@ -41,25 +39,25 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
                 "tokens", self.get_next_card_like("tokens")
             ),
             self.__generate_insert_statement(
-                "card_identifiers", self.get_next_card_identifier("cards")
+                "cardIdentifiers", self.get_next_card_identifier("cards")
             ),
             self.__generate_insert_statement(
-                "card_legalities", self.get_next_card_legalities("cards")
+                "cardLegalities", self.get_next_card_legalities("cards")
             ),
             self.__generate_insert_statement(
-                "card_rulings", self.get_next_card_ruling_entry("cards")
+                "cardRulings", self.get_next_card_ruling_entry("cards")
             ),
             self.__generate_insert_statement(
-                "card_foreign_data", self.get_next_card_foreign_data_entry("cards")
+                "cardForeignData", self.get_next_card_foreign_data_entry("cards")
             ),
             self.__generate_insert_statement(
-                "card_purchase_urls", self.get_next_card_purchase_url_entry("cards")
+                "cardPurchaseUrls", self.get_next_card_purchase_url_entry("cards")
             ),
             self.__generate_insert_statement(
-                "token_identifiers", self.get_next_card_identifier("tokens")
+                "tokenIdentifiers", self.get_next_card_identifier("tokens")
             ),
             self.__generate_insert_statement(
-                "set_translations",
+                "setTranslations",
                 self.get_next_set_field_with_normalization("translations"),
             ),
         ]
@@ -67,7 +65,7 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
     def __get_mtgjson_card_prices_generators(self) -> List[Iterator[str]]:
         return [
             self.__generate_batch_insert_statement(
-                "card_prices",
+                "cardPrices",
                 self.get_next_card_price(
                     datetime.date.today() - datetime.timedelta(days=14)
                 ),
@@ -78,7 +76,7 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
         self, table_name: str, data_generator: Iterator[Dict[str, Any]]
     ) -> Iterator[str]:
         for obj in data_generator:
-            data_keys = ", ".join(map(humps.decamelize, obj.keys()))
+            data_keys = ", ".join(obj.keys())
             safe_values = self.create_insert_statement_body(obj)
             yield f"INSERT INTO {table_name} ({data_keys}) VALUES ({safe_values});\n"
 
@@ -87,7 +85,7 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
     ) -> Iterator[str]:
         insert_values = []
         for obj in data_generator:
-            data_keys = ", ".join(map(humps.decamelize, obj.keys()))
+            data_keys = ", ".join(obj.keys())
             safe_values = f"({self.create_insert_statement_body(obj)})"
             insert_values.append(safe_values)
 
@@ -130,7 +128,6 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
                 if set_attribute in self.skipable_set_keys:
                     continue
 
-                set_attribute = humps.decamelize(set_attribute)
                 schema["sets"][set_attribute]["type"] = self._get_sql_type(
                     set_attribute_data
                 )
@@ -145,7 +142,6 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
                     if card_attribute in self.skipable_card_keys:
                         continue
 
-                    card_attribute = humps.decamelize(card_attribute)
                     schema[key_name][card_attribute]["type"] = self._get_sql_type(
                         card_attribute_data
                     )
@@ -158,9 +154,9 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
 
     @staticmethod
     def _add_card_rulings_table_schema(schema: Dict[str, Any]) -> None:
-        schema["card_rulings"]["text"]["type"] = "TEXT"
-        schema["card_rulings"]["date"]["type"] = "DATE"
-        schema["card_rulings"]["uuid"]["type"] = "VARCHAR(36) NOT NULL"
+        schema["cardRulings"]["text"]["type"] = "TEXT"
+        schema["cardRulings"]["date"]["type"] = "DATE"
+        schema["cardRulings"]["uuid"]["type"] = "VARCHAR(36) NOT NULL"
 
     def __add_card_field_with_normalization(
         self,
@@ -175,54 +171,52 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
                 for card_field_sub_entry in mtgjson_card.get(card_field, []):
                     if iterate_subfield:
                         for key in card_field_sub_entry:
-                            schema[table_name][humps.decamelize(key)]["type"] = "TEXT"
+                            schema[table_name][key]["type"] = "TEXT"
                     else:
-                        schema[table_name][humps.decamelize(card_field_sub_entry)][
-                            "type"
-                        ] = "TEXT"
+                        schema[table_name][card_field_sub_entry]["type"] = "TEXT"
 
     def _add_card_identifiers_table_schema(self, schema: Dict[str, Any]) -> None:
         return self.__add_card_field_with_normalization(
-            "card_identifiers", schema, "identifiers"
+            "cardIdentifiers", schema, "identifiers"
         )
 
     def _add_card_legalities_table_schema(self, schema: Dict[str, Any]) -> None:
         return self.__add_card_field_with_normalization(
-            "card_legalities", schema, "legalities"
+            "cardLegalities", schema, "legalities"
         )
 
     def _add_card_foreign_data_table_schema(self, schema: Dict[str, Any]) -> None:
         self.__add_card_field_with_normalization(
-            "card_foreign_data", schema, "foreignData", True
+            "cardForeignData", schema, "foreignData", True
         )
-        schema["card_foreign_data"]["multiverse_id"]["type"] = "INTEGER"
+        schema["cardForeignData"]["multiverseId"]["type"] = "INTEGER"
 
     def _add_card_purchase_urls_table_schema(self, schema: Dict[str, Any]) -> None:
         return self.__add_card_field_with_normalization(
-            "card_purchase_urls", schema, "purchaseUrls"
+            "cardPurchaseUrls", schema, "purchaseUrls"
         )
 
     def _add_token_identifiers_table_schema(self, schema: Dict[str, Any]) -> None:
         return self.__add_card_field_with_normalization(
-            "token_identifiers", schema, "identifiers"
+            "tokenIdentifiers", schema, "identifiers"
         )
 
     @staticmethod
     def _add_set_translation_table_schema(schema: Dict[str, Any]) -> None:
-        schema["set_translations"]["language"]["type"] = "TEXT"
-        schema["set_translations"]["translation"]["type"] = "TEXT"
-        schema["set_translations"]["uuid"]["type"] = "VARCHAR(36) NOT NULL"
+        schema["setTranslations"]["language"]["type"] = "TEXT"
+        schema["setTranslations"]["translation"]["type"] = "TEXT"
+        schema["setTranslations"]["uuid"]["type"] = "VARCHAR(36) NOT NULL"
 
     @staticmethod
     def _add_all_prices_schema(schema: Dict[str, Any]) -> None:
-        schema["card_prices"]["game_availability"]["type"] = "VARCHAR(15)"
-        schema["card_prices"]["price_provider"]["type"] = "VARCHAR(20)"
-        schema["card_prices"]["provider_listing"]["type"] = "VARCHAR(15)"
-        schema["card_prices"]["card_finish"]["type"] = "VARCHAR(15)"
-        schema["card_prices"]["date"]["type"] = "DATE"
-        schema["card_prices"]["price"]["type"] = "FLOAT"
-        schema["card_prices"]["currency"]["type"] = "VARCHAR(10)"
-        schema["card_prices"]["uuid"]["type"] = "VARCHAR(36) NOT NULL"
+        schema["cardPrices"]["gameAvailability"]["type"] = "VARCHAR(15)"
+        schema["cardPrices"]["priceProvider"]["type"] = "VARCHAR(20)"
+        schema["cardPrices"]["providerListing"]["type"] = "VARCHAR(15)"
+        schema["cardPrices"]["cardFinish"]["type"] = "VARCHAR(15)"
+        schema["cardPrices"]["date"]["type"] = "DATE"
+        schema["cardPrices"]["price"]["type"] = "FLOAT"
+        schema["cardPrices"]["currency"]["type"] = "VARCHAR(10)"
+        schema["cardPrices"]["uuid"]["type"] = "VARCHAR(36) NOT NULL"
 
     @staticmethod
     def _convert_schema_dict_to_query(

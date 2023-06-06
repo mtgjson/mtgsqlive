@@ -5,8 +5,6 @@ import pathlib
 from sqlite3 import Connection
 from typing import Any, Dict, Iterator, Optional, TextIO
 
-import humps
-
 from ...enums import MtgjsonDataType
 
 
@@ -66,10 +64,7 @@ class AbstractConverter(abc.ABC):
                 continue
 
             set_data[set_attribute]["set_code"] = set_code
-            yield {
-                humps.camelize(key): value
-                for key, value in set_data[set_attribute].items()
-            }
+            yield set_data[set_attribute]
 
     def get_next_card_like(self, set_attribute: str) -> Iterator[Dict[str, Any]]:
         for set_data in self.mtgjson_data["data"].values():
@@ -125,7 +120,7 @@ class AbstractConverter(abc.ABC):
         entity: Dict[str, Any], card: Dict[str, Any]
     ) -> Dict[str, Any]:
         entity["uuid"] = card.get("uuid")
-        return {humps.camelize(key): value for key, value in entity.items()}
+        return entity
 
     def get_next_card_price(
         self,
@@ -156,10 +151,10 @@ class AbstractConverter(abc.ABC):
                                     continue
                                 yield {
                                     "uuid": card_uuid,
-                                    "game_availability": game_availability,
-                                    "price_provider": price_provider,
-                                    "provider_listing": provider_listing,
-                                    "card_finish": card_finish,
+                                    "gameAvailability": game_availability,
+                                    "priceProvider": price_provider,
+                                    "providerListing": provider_listing,
+                                    "cardFinish": card_finish,
                                     "date": price_date,
                                     "price": price_amount,
                                     "currency": currency,

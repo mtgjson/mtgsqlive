@@ -3,6 +3,5 @@ argparse==1.4.0
 mysql-connector-python==8.0.33
 pandas==2.0.2
 pyarrow==12.0.0
-pyhumps==3.8.0
 requests==2.31.0
 setuptools==67.8.0
