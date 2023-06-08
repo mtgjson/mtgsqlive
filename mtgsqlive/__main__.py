@@ -60,7 +60,7 @@ def parse_args() -> argparse.Namespace:
         "--input-dir",
         type=str,
         required=True,
-        help="Path to directory that has MTGJSON compiled files, like AllPrintings.json and AllPrices.json",
+        help="Path to directory that has MTGJSON compiled files, like AllPrintings.json and AllPricesToday.json",
     )
     parser.add_argument(
         "-o",
