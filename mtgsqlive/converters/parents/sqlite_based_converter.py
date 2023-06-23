@@ -1,3 +1,4 @@
+import abc
 import sqlite3
 from typing import Any, Dict, Iterator
 
@@ -5,7 +6,7 @@ from ...enums import MtgjsonDataType
 from .abstract import AbstractConverter
 
 
-class SqliteBasedConverter(AbstractConverter):
+class SqliteBasedConverter(AbstractConverter, abc.ABC):
     sqlite_db: sqlite3.Connection
 
     def __init__(

@@ -21,14 +21,20 @@ class AbstractConverter(abc.ABC):
     output_obj: OutputObject
     data_type: MtgjsonDataType
 
-    skipable_set_keys = ["booster", "cards", "sealedProduct", "tokens", "translations"]
-    skipable_card_keys = [
-        "convertedManaCost",
-        "foreignData",
-        "identifiers",
-        "legalities",
-        "purchaseUrls",
-        "rulings",
+    set_keys_to_skip = [
+        "booster",  # WIP for own table
+        "cards",  # Broken out into cards
+        "sealedProduct",  # WIP for own table
+        "tokens",  # Broken out into tokens
+        "translations",  # Broken out into setTranslations
+    ]
+    card_keys_to_skip = [
+        "convertedManaCost",  # Redundant with manaValue
+        "foreignData",  # Broken out into cardForeignData
+        "identifiers",  # Broken out into cardIdentifiers & tokenIdentifiers
+        "legalities",  # Broken out into cardLegalities
+        "purchaseUrls",  # Broken out into cardPurchaseUrls
+        "rulings",  # Broken out into cardRulings
     ]
 
     def __init__(
@@ -51,7 +57,7 @@ class AbstractConverter(abc.ABC):
     def get_next_set(self) -> Iterator[Dict[str, Any]]:
         for set_data in self.mtgjson_data["data"].values():
             set_data = copy.deepcopy(set_data)
-            for set_attribute in self.skipable_set_keys:
+            for set_attribute in self.set_keys_to_skip:
                 if set_attribute in set_data:
                     del set_data[set_attribute]
             yield set_data
@@ -70,7 +76,7 @@ class AbstractConverter(abc.ABC):
         for set_data in self.mtgjson_data["data"].values():
             set_data = copy.deepcopy(set_data)
             for card in set_data.get(set_attribute):
-                for card_attribute in self.skipable_card_keys:
+                for card_attribute in self.card_keys_to_skip:
                     if card_attribute in card:
                         del card[card_attribute]
                 yield card

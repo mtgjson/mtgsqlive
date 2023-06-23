@@ -84,6 +84,7 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
         self, table_name: str, data_generator: Iterator[Dict[str, Any]]
     ) -> Iterator[str]:
         insert_values = []
+        data_keys = ""
         for obj in data_generator:
             data_keys = ", ".join(obj.keys())
             safe_values = f"({self.create_insert_statement_body(obj)})"
@@ -125,7 +126,7 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
     def _add_set_table_schema(self, schema: Dict[str, Any]) -> None:
         for set_data in self.mtgjson_data["data"].values():
             for set_attribute, set_attribute_data in set_data.items():
-                if set_attribute in self.skipable_set_keys:
+                if set_attribute in self.set_keys_to_skip:
                     continue
 
                 schema["sets"][set_attribute]["type"] = self._get_sql_type(
@@ -139,7 +140,7 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
         for set_data in self.mtgjson_data["data"].values():
             for mtgjson_card in set_data.get(key_name):
                 for card_attribute, card_attribute_data in mtgjson_card.items():
-                    if card_attribute in self.skipable_card_keys:
+                    if card_attribute in self.card_keys_to_skip:
                         continue
 
                     schema[key_name][card_attribute]["type"] = self._get_sql_type(
