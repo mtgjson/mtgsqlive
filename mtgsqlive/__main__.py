@@ -31,7 +31,7 @@ def init_logger() -> None:
                 str(
                     LOG_DIR.joinpath(
                         "mtgsqlive_"
-                        + str(datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+                        + str(datetime.now().strftime("%Y_%m_%d_%H_%M_%S"))
                         + ".log"
                     )
                 )
