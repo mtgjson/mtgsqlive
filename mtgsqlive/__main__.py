@@ -100,7 +100,7 @@ def main() -> None:
 
     converters_map = get_converters()
     if not args.all:
-        for converter_input_param, converter in converters_map.copy().items():
+        for converter_input_param in converters_map.copy().keys():
             if not getattr(args, converter_input_param):
                 del converters_map[converter_input_param]
 
