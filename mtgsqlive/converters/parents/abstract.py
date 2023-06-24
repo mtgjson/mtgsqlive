@@ -21,7 +21,7 @@ class AbstractConverter(abc.ABC):
     data_type: MtgjsonDataType
 
     set_keys_to_skip = {
-        "booster",  # WIP for own table
+        "booster",  # Broken out into BoosterContents, BoosterContentWeights, BoosterSheets, BoosterSheetCards
         "cards",  # Broken out into cards
         "sealedProduct",  # WIP for own table
         "tokens",  # Broken out into tokens
@@ -163,3 +163,52 @@ class AbstractConverter(abc.ABC):
                                     "price": price_amount,
                                     "currency": currency,
                                 }
+
+    def get_next_booster_contents_entry(self) -> Iterator[Dict[str, str | int]]:
+        for set_code, set_data in self.mtgjson_data["data"].items():
+            for booster_name, booster_object in set_data.get("booster", {}).items():
+                for index, booster_contents in enumerate(booster_object["boosters"]):
+                    for sheet_name, sheet_picks in booster_contents["contents"].items():
+                        yield {
+                            "setCode": set_code,
+                            "boosterName": booster_name,
+                            "boosterIndex": index,
+                            "sheetName": sheet_name,
+                            "sheetPicks": sheet_picks,
+                        }
+
+    def get_next_booster_weights_entry(self) -> Iterator[Dict[str, str | int]]:
+        for set_code, set_data in self.mtgjson_data["data"].items():
+            for booster_name, booster_object in set_data.get("booster", {}).items():
+                for index, booster_contents in enumerate(booster_object["boosters"]):
+                    yield {
+                        "setCode": set_code,
+                        "boosterName": booster_name,
+                        "boosterIndex": index,
+                        "boosterWeight": booster_contents["weight"],
+                    }
+
+    def get_next_booster_sheets_entry(self) -> Iterator[Dict[str, str | bool]]:
+        for set_code, set_data in self.mtgjson_data["data"].items():
+            for booster_object in set_data.get("booster", {}).values():
+                for sheet_name, sheet_contents in booster_object["sheets"].items():
+                    yield {
+                        "setCode": set_code,
+                        "sheetName": sheet_name,
+                        "sheetIsFoil": sheet_contents.get("foil", False),
+                        "sheetHasBalanceColors": sheet_contents.get(
+                            "balanceColors", False
+                        ),
+                    }
+
+    def get_next_booster_sheet_cards_entry(self) -> Iterator[Dict[str, str | int]]:
+        for set_code, set_data in self.mtgjson_data["data"].items():
+            for booster_object in set_data.get("booster", {}).values():
+                for sheet_name, sheet_contents in booster_object["sheets"].items():
+                    for card_uuid, card_weight in sheet_contents["cards"].items():
+                        yield {
+                            "setCode": set_code,
+                            "sheetName": sheet_name,
+                            "cardUuid": card_uuid,
+                            "cardWeight": card_weight,
+                        }

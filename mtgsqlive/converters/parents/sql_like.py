@@ -60,6 +60,18 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
                 "setTranslations",
                 self.get_next_set_field_with_normalization("translations"),
             ),
+            self.__generate_insert_statement(
+                "setBoosterContents", self.get_next_booster_contents_entry()
+            ),
+            self.__generate_insert_statement(
+                "setBoosterContentWeights", self.get_next_booster_weights_entry()
+            ),
+            self.__generate_insert_statement(
+                "setBoosterSheets", self.get_next_booster_sheets_entry()
+            ),
+            self.__generate_insert_statement(
+                "setBoosterSheetCards", self.get_next_booster_sheet_cards_entry()
+            ),
         ]
 
     def __get_mtgjson_card_prices_generators(self) -> List[Iterator[str]]:
@@ -113,6 +125,10 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
             self._add_card_purchase_urls_table_schema(schema)
             self._add_token_identifiers_table_schema(schema)
             self._add_set_translation_table_schema(schema)
+            self._add_set_booster_contents_schema(schema)
+            self._add_set_booster_content_weights_schema(schema)
+            self._add_set_booster_sheets_schema(schema)
+            self._add_set_booster_sheet_cards_schema(schema)
         elif self.data_type == MtgjsonDataType.MTGJSON_CARD_PRICES:
             self._add_all_prices_schema(schema)
 
@@ -218,6 +234,35 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
         schema["cardPrices"]["price"]["type"] = "FLOAT"
         schema["cardPrices"]["currency"]["type"] = "VARCHAR(10)"
         schema["cardPrices"]["uuid"]["type"] = "VARCHAR(36) NOT NULL"
+
+    @staticmethod
+    def _add_set_booster_contents_schema(schema: Dict[str, Any]) -> None:
+        schema["setBoosterContents"]["setCode"]["type"] = "VARCHAR(20)"
+        schema["setBoosterContents"]["boosterName"]["type"] = "VARCHAR(255)"
+        schema["setBoosterContents"]["boosterIndex"]["type"] = "INTEGER"
+        schema["setBoosterContents"]["sheetName"]["type"] = "VARCHAR(255)"
+        schema["setBoosterContents"]["sheetPicks"]["type"] = "INTEGER"
+
+    @staticmethod
+    def _add_set_booster_content_weights_schema(schema: Dict[str, Any]) -> None:
+        schema["setBoosterContentWeights"]["setCode"]["type"] = "VARCHAR(20)"
+        schema["setBoosterContentWeights"]["boosterName"]["type"] = "VARCHAR(255)"
+        schema["setBoosterContentWeights"]["boosterIndex"]["type"] = "INTEGER"
+        schema["setBoosterContentWeights"]["boosterWeight"]["type"] = "INTEGER"
+
+    @staticmethod
+    def _add_set_booster_sheets_schema(schema: Dict[str, Any]) -> None:
+        schema["setBoosterSheets"]["setCode"]["type"] = "VARCHAR(20)"
+        schema["setBoosterSheets"]["sheetName"]["type"] = "VARCHAR(255)"
+        schema["setBoosterSheets"]["sheetIsFoil"]["type"] = "BOOLEAN"
+        schema["setBoosterSheets"]["sheetHasBalanceColors"]["type"] = "BOOLEAN"
+
+    @staticmethod
+    def _add_set_booster_sheet_cards_schema(schema: Dict[str, Any]) -> None:
+        schema["setBoosterSheetCards"]["setCode"]["type"] = "VARCHAR(20)"
+        schema["setBoosterSheetCards"]["sheetName"]["type"] = "VARCHAR(255)"
+        schema["setBoosterSheetCards"]["cardUuid"]["type"] = "VARCHAR(36) NOT NULL"
+        schema["setBoosterSheetCards"]["cardWeight"]["type"] = "INTEGER"
 
     @staticmethod
     def _convert_schema_dict_to_query(
