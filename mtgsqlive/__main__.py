@@ -69,6 +69,13 @@ def parse_args() -> argparse.Namespace:
         default="/tmp/mtgsqlive",
         help="Where to place translated files",
     )
+    parser.add_argument(
+        "-s",
+        "--sets",
+        type=str.upper,
+        nargs="*",
+        help="Transpose specific sets instead of all sets",
+    )
 
     converter_group = parser.add_argument_group(title="Converters")
     converter_group.add_argument(
@@ -113,6 +120,11 @@ def main() -> None:
 
         with mtgjson_input_file.open(encoding="utf-8") as fp:
             mtgjson_input_data = json.load(fp)
+
+        if args.sets:
+            for set_key in list(mtgjson_input_data["data"].keys()):
+                if set_key not in args.sets:
+                    del mtgjson_input_data["data"][set_key]
 
         for converter in converters_map.values():
             LOGGER.info(f"Converting {data_type.value} via {converter.__name__}")
