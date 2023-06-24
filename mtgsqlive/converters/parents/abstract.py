@@ -1,5 +1,4 @@
 import abc
-import copy
 import datetime
 import pathlib
 from sqlite3 import Connection
@@ -21,21 +20,21 @@ class AbstractConverter(abc.ABC):
     output_obj: OutputObject
     data_type: MtgjsonDataType
 
-    set_keys_to_skip = [
+    set_keys_to_skip = {
         "booster",  # WIP for own table
         "cards",  # Broken out into cards
         "sealedProduct",  # WIP for own table
         "tokens",  # Broken out into tokens
         "translations",  # Broken out into setTranslations
-    ]
-    card_keys_to_skip = [
+    }
+    card_keys_to_skip = {
         "convertedManaCost",  # Redundant with manaValue
         "foreignData",  # Broken out into cardForeignData
         "identifiers",  # Broken out into cardIdentifiers & tokenIdentifiers
         "legalities",  # Broken out into cardLegalities
         "purchaseUrls",  # Broken out into cardPurchaseUrls
         "rulings",  # Broken out into cardRulings
-    ]
+    }
 
     def __init__(
         self, mtgjson_data: Dict[str, Any], output_dir: str, data_type: MtgjsonDataType
@@ -56,11 +55,11 @@ class AbstractConverter(abc.ABC):
 
     def get_next_set(self) -> Iterator[Dict[str, Any]]:
         for set_data in self.mtgjson_data["data"].values():
-            set_data = copy.deepcopy(set_data)
-            for set_attribute in self.set_keys_to_skip:
-                if set_attribute in set_data:
-                    del set_data[set_attribute]
-            yield set_data
+            local_set_data = {}
+            for key, value in set_data.items():
+                if key not in self.set_keys_to_skip:
+                    local_set_data[key] = value
+            yield local_set_data
 
     def get_next_set_field_with_normalization(
         self, set_attribute: str
@@ -74,12 +73,12 @@ class AbstractConverter(abc.ABC):
 
     def get_next_card_like(self, set_attribute: str) -> Iterator[Dict[str, Any]]:
         for set_data in self.mtgjson_data["data"].values():
-            set_data = copy.deepcopy(set_data)
             for card in set_data.get(set_attribute):
-                for card_attribute in self.card_keys_to_skip:
-                    if card_attribute in card:
-                        del card[card_attribute]
-                yield card
+                local_card = {}
+                for key, value in card.items():
+                    if key not in self.card_keys_to_skip:
+                        local_card[key] = value
+                yield local_card
 
     def get_next_card_identifier(self, set_attribute: str) -> Iterator[Dict[str, Any]]:
         return self.get_next_card_field_with_normalization(set_attribute, "identifiers")
@@ -108,7 +107,6 @@ class AbstractConverter(abc.ABC):
         self, set_attribute: str, secondary_attribute: str
     ) -> Iterator[Dict[str, Any]]:
         for set_data in self.mtgjson_data["data"].values():
-            set_data = copy.deepcopy(set_data)
             for card in set_data.get(set_attribute):
                 if secondary_attribute not in card:
                     continue
