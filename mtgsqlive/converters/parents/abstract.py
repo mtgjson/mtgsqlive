@@ -23,6 +23,7 @@ class AbstractConverter(abc.ABC):
     set_keys_to_skip = {
         "booster",  # Broken out into BoosterContents, BoosterContentWeights, BoosterSheets, BoosterSheetCards
         "cards",  # Broken out into cards
+        "decks",  # WIP for own tables
         "sealedProduct",  # WIP for own table
         "tokens",  # Broken out into tokens
         "translations",  # Broken out into setTranslations
