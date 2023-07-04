@@ -262,7 +262,7 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
         schema["setBoosterSheetCards"]["setCode"]["type"] = "VARCHAR(20)"
         schema["setBoosterSheetCards"]["sheetName"]["type"] = "VARCHAR(255)"
         schema["setBoosterSheetCards"]["cardUuid"]["type"] = "VARCHAR(36) NOT NULL"
-        schema["setBoosterSheetCards"]["cardWeight"]["type"] = "INTEGER"
+        schema["setBoosterSheetCards"]["cardWeight"]["type"] = "BIGINT"
 
     @staticmethod
     def _convert_schema_dict_to_query(
