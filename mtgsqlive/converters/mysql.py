@@ -44,6 +44,7 @@ class MysqlConverter(SqlLikeConverter):
 
         insert_data_generator = self.generate_database_insert_statements()
         self.write_statements_to_file(insert_data_generator)
+        self.output_obj.fp.write("\nCOMMIT;")
 
     def create_insert_statement_body(self, data: Dict[str, Any]) -> str:
         pre_processed_values = []
