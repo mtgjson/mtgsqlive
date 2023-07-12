@@ -279,6 +279,9 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
                 q += f"\t{attribute} {table_data[attribute]['type']},\n"
             q = f"{q[:-2]}\n){engine};\n\n"
 
+            if "uuid" in table_data.keys():
+                q = f"{q[:-2]}\nCREATE INDEX {table_name}_uuid ON {table_name}(uuid);\n\n"
+
         return q[:-2]
 
     @staticmethod
