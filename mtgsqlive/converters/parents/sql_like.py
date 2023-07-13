@@ -152,7 +152,6 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
         schema["sets"]["code"]["type"] = "VARCHAR(8) UNIQUE NOT NULL"
 
     def _get_card_like_schema(self, schema: Dict[str, Any], key_name: str) -> None:
-        schema[key_name]["uuid"]["type"] = "VARCHAR(36) NOT NULL"
         for set_data in self.mtgjson_data["data"].values():
             for mtgjson_card in set_data.get(key_name):
                 for card_attribute, card_attribute_data in mtgjson_card.items():
@@ -162,6 +161,7 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
                     schema[key_name][card_attribute]["type"] = self._get_sql_type(
                         card_attribute_data
                     )
+        schema[key_name]["uuid"]["type"] = "VARCHAR(36) NOT NULL"
 
     def _add_card_table_schema(self, schema: Dict[str, Any]) -> None:
         self._get_card_like_schema(schema, "cards")
