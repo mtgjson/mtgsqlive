@@ -242,6 +242,7 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
         schema["setBoosterContents"]["boosterIndex"]["type"] = "INTEGER"
         schema["setBoosterContents"]["sheetName"]["type"] = "VARCHAR(255)"
         schema["setBoosterContents"]["sheetPicks"]["type"] = "INTEGER"
+        schema["setBoosterContents"]["unique_constraint"] = ["setCode", "sheetName", "boosterName", "boosterIndex"]
 
     @staticmethod
     def _add_set_booster_content_weights_schema(schema: Dict[str, Any]) -> None:
@@ -253,16 +254,20 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
     @staticmethod
     def _add_set_booster_sheets_schema(schema: Dict[str, Any]) -> None:
         schema["setBoosterSheets"]["setCode"]["type"] = "VARCHAR(20)"
+        schema["setBoosterSheets"]["boosterName"]["type"] = "VARCHAR(255)"
         schema["setBoosterSheets"]["sheetName"]["type"] = "VARCHAR(255)"
         schema["setBoosterSheets"]["sheetIsFoil"]["type"] = "BOOLEAN"
         schema["setBoosterSheets"]["sheetHasBalanceColors"]["type"] = "BOOLEAN"
+        schema["setBoosterSheets"]["unique_constraint"] = ["setCode", "sheetName", "boosterName"]
 
     @staticmethod
     def _add_set_booster_sheet_cards_schema(schema: Dict[str, Any]) -> None:
         schema["setBoosterSheetCards"]["setCode"]["type"] = "VARCHAR(20)"
         schema["setBoosterSheetCards"]["sheetName"]["type"] = "VARCHAR(255)"
+        schema["setBoosterSheetCards"]["boosterName"]["type"] = "VARCHAR(255)"
         schema["setBoosterSheetCards"]["cardUuid"]["type"] = "VARCHAR(36) NOT NULL"
         schema["setBoosterSheetCards"]["cardWeight"]["type"] = "BIGINT"
+        schema["setBoosterSheetCards"]["unique_constraint"] = ["setCode", "sheetName", "boosterName", "cardUuid"]
 
     @staticmethod
     def _convert_schema_dict_to_query(
@@ -276,7 +281,13 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
             if primary_key_op:
                 q += f"\tid {primary_key_op},\n"
             for attribute in sorted(table_data.keys()):
+                if "unique_constraint" == attribute:
+                    continue
                 q += f"\t{attribute} {table_data[attribute]['type']},\n"
+
+            if "unique_constraint" in table_data.keys():
+                q += f"\tUNIQUE ({','.join(table_data['unique_constraint'])}),\n"
+
             q = f"{q[:-2]}\n){engine};\n\n"
 
             if "uuid" in table_data.keys():
