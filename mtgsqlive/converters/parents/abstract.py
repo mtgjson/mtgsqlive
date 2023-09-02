@@ -191,11 +191,12 @@ class AbstractConverter(abc.ABC):
 
     def get_next_booster_sheets_entry(self) -> Iterator[Dict[str, str | bool]]:
         for set_code, set_data in self.mtgjson_data["data"].items():
-            for booster_object in set_data.get("booster", {}).values():
+            for booster_name, booster_object in set_data.get("booster", {}).items():
                 for sheet_name, sheet_contents in booster_object["sheets"].items():
                     yield {
                         "setCode": set_code,
                         "sheetName": sheet_name,
+                        "boosterName": booster_name,
                         "sheetIsFoil": sheet_contents.get("foil", False),
                         "sheetHasBalanceColors": sheet_contents.get(
                             "balanceColors", False
@@ -204,12 +205,13 @@ class AbstractConverter(abc.ABC):
 
     def get_next_booster_sheet_cards_entry(self) -> Iterator[Dict[str, str | int]]:
         for set_code, set_data in self.mtgjson_data["data"].items():
-            for booster_object in set_data.get("booster", {}).values():
+            for booster_name, booster_object in set_data.get("booster", {}).items():
                 for sheet_name, sheet_contents in booster_object["sheets"].items():
                     for card_uuid, card_weight in sheet_contents["cards"].items():
                         yield {
                             "setCode": set_code,
                             "sheetName": sheet_name,
+                            "boosterName": booster_name,
                             "cardUuid": card_uuid,
                             "cardWeight": card_weight,
                         }
