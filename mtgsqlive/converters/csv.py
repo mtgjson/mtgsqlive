@@ -1,7 +1,5 @@
 from typing import Any, Dict
 
-import pandas as pd
-
 from ..enums import MtgjsonDataType
 from .parents import SqliteBasedConverter
 
@@ -14,10 +12,8 @@ class CsvConverter(SqliteBasedConverter):
         self.output_obj.root_dir.joinpath("csv").mkdir(parents=True, exist_ok=True)
 
     def convert(self) -> None:
-        for table_name in self.get_next_table_name():
-            pd_table = pd.read_sql_query(
-                f"SELECT * FROM `{table_name}`", self.sqlite_db
-            )
+        for table_name in self.get_table_names():
+            pd_table = self.get_table_dataframe(table_name)
 
             pd_table.to_csv(
                 str(

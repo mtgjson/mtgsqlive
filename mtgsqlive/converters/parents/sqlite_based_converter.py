@@ -1,13 +1,15 @@
 import abc
-import sqlite3
-from typing import Any, Dict, Iterator
+from typing import Any, Dict, List
+
+import pandas as pd
+import sqlalchemy
 
 from ...enums import MtgjsonDataType
 from .abstract import AbstractConverter
 
 
 class SqliteBasedConverter(AbstractConverter, abc.ABC):
-    sqlite_db: sqlite3.Connection
+    sqlite_engine: sqlalchemy.Engine
 
     def __init__(
         self, mtgjson_data: Dict[str, Any], output_dir: str, data_type: MtgjsonDataType
@@ -18,15 +20,13 @@ class SqliteBasedConverter(AbstractConverter, abc.ABC):
         if not db_path.exists():
             raise FileNotFoundError()
 
-        self.sqlite_db = sqlite3.connect(str(db_path))
-        self.sqlite_db.text_factory = lambda x: str(x, "utf-8")
+        self.sqlite_engine = sqlalchemy.create_engine(f"sqlite:///{db_path}")
 
-    def get_next_table_name(self) -> Iterator[str]:
-        cursor = self.sqlite_db.cursor()
+    def get_table_names(self) -> List[str]:
+        with self.sqlite_engine.connect() as connection:
+            result = connection.execute(sqlalchemy.text("""SELECT name FROM sqlite_master WHERE type = 'table';"""))
+            table_names = [r.name for r in result]
+        return table_names
 
-        cursor.execute("SELECT `name` FROM `sqlite_master` WHERE `type`='table';")
-        all_table_names = list(map("".join, cursor.fetchall()))
-        cursor.close()
-
-        for table_name in all_table_names:
-            yield table_name
+    def get_table_dataframe(self, table_name: str) -> pd.DataFrame:
+        return pd.read_sql_table(table_name, self.sqlite_engine)
