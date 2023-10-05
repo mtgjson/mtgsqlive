@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from collections import defaultdict
 from typing import Any, Dict, Iterator
@@ -37,17 +38,26 @@ class SqliteConverter(SqlLikeConverter):
         for value in data.values():
             if value is None:
                 pre_processed_values.append("NULL")
-                continue
 
-            if isinstance(value, list):
+            elif isinstance(value, list):
                 statement = (
                     pymysql.converters.escape_string(", ".join(map(str, value)))
                     .replace("\\'", "'")
                     .replace('\\"', '""')
                 )
                 pre_processed_values.append(f'"{statement}"')
+
+            elif isinstance(value, dict):
+                statement = (
+                    pymysql.converters.escape_string(json.dumps(value))
+                    .replace("\\'", "'")
+                    .replace('\\"', '""')
+                )
+                pre_processed_values.append(f'"{statement}"')
+
             elif isinstance(value, bool):
                 pre_processed_values.append("1" if value else "0")
+                
             else:
                 statement = (
                     pymysql.converters.escape_string(str(value))
