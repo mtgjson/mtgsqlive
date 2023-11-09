@@ -2,7 +2,7 @@ PyMySQL==1.0.3
 argparse==1.4.0
 mysql-connector-python==8.0.33
 pandas==2.0.2
-pyarrow==12.0.1
+pyarrow==14.0.1
 requests==2.31.0
 setuptools==68.0.0
 SQLAlchemy==2.0.21
