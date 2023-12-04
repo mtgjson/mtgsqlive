@@ -220,9 +220,9 @@ class SqlLikeConverter(AbstractConverter, abc.ABC):
 
     @staticmethod
     def _add_set_translation_table_schema(schema: Dict[str, Any]) -> None:
+        schema["setTranslations"]["setCode"]["type"] = "VARCHAR(20)"
         schema["setTranslations"]["language"]["type"] = "TEXT"
         schema["setTranslations"]["translation"]["type"] = "TEXT"
-        schema["setTranslations"]["uuid"]["type"] = "VARCHAR(36) NOT NULL"
 
     @staticmethod
     def _add_all_prices_schema(schema: Dict[str, Any]) -> None:

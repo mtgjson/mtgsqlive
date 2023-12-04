@@ -69,8 +69,12 @@ class AbstractConverter(abc.ABC):
             if not set_data.get(set_attribute):
                 continue
 
-            set_data[set_attribute]["set_code"] = set_code
-            yield set_data[set_attribute]
+            for language, translation in set_data[set_attribute].items():
+                yield {
+                    "language": language,
+                    "setCode": set_code,
+                    "translation": translation
+                }
 
     def get_next_card_like(self, set_attribute: str) -> Iterator[Dict[str, Any]]:
         for set_data in self.mtgjson_data["data"].values():
